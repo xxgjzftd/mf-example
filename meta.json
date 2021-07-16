@@ -1,0 +1,1 @@
+{"shared":{"vue":["defineComponent","resolveComponent","openBlock","createBlock","Fragment","createVNode","createApp"],"vue-router":["useRouter","createRouter","createWebHistory"]}}

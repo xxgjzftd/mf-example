@@ -1,0 +1,19 @@
+{
+  "name": "@vue-mfe/container",
+  "version": "1.0.0",
+  "private": true,
+  "author": "xxgjzftd <xxgjzftd@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "serve": "vite preview"
+  },
+  "mfe": {
+    "type": "container"
+  },
+  "dependencies": {
+    "vue": "^3.1.4",
+    "vue-router": "4"
+  }
+}

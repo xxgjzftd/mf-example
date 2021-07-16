@@ -1,0 +1,23 @@
+{
+  "author": "xxgjzftd <xxgjzftd@gmail.com>",
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^1.2.4",
+    "execa": "^5.1.1",
+    "prettier": "npm:@xxgjzftd/prettier",
+    "typescript": "^4.3.5",
+    "vite": "^2.4.0",
+    "vue-tsc": "^0.2.0"
+  },
+  "license": "MIT",
+  "name": "web",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "type": "module",
+  "version": "1.0.0",
+  "workspaces": [
+    "packages/*"
+  ]
+}

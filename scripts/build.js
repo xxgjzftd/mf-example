@@ -6,6 +6,7 @@ import { createRequire } from 'module'
 import vite from 'vite'
 import vue from '@vitejs/plugin-vue'
 import execa from 'execa'
+import axios from 'axios'
 
 import resolvers from '../resolvers/index.js'
 import config from '../mfe.config.js'
@@ -13,11 +14,13 @@ import config from '../mfe.config.js'
 const require = createRequire(import.meta.url)
 const meta = {
   path: resolve('meta.json')
+  // path: 'http://localhost:3000/meta.json'
 }
 meta.data = require(meta.path)
-const dependencies = ['vue', 'vue-router']
-const optimized = config.optimized
+// meta.data = await axios.get(meta.path)
+meta.data.vendors = meta.data.vendors || {}
 const target = ['es2019', 'edge88', 'firefox78', 'chrome87', 'safari13.1']
+// todo refactor
 const getPackageInfo = (path) => require(resolve(path.replace(/(?<=(.+?\/){2}).+/, 'package.json')))
 const getDigest = (content) => {
   const hash = createHash('sha256')
@@ -44,7 +47,8 @@ const build = (path) => {
       routes.pages.build()
       break
     case 'utils':
-      routes.utils.status || routes.utils.build(entry, dependencies)
+      // todo refactor
+      routes.utils.status || routes.utils.build(resolve(path.replace(/(?<=(.+?\/){2}).+/, entry)), dependencies)
       break
     case 'container':
       routes.pages.build()
@@ -147,7 +151,7 @@ const routes = {
     async build (entry, dependencies) {
       routes.utils.status = BUILDING
       const outDir = 'utils'
-      const { output } = await vite.build(
+      const [{ output }] = await vite.build(
         {
           configFile: false,
           build: {
@@ -165,8 +169,10 @@ const routes = {
         }
       )
       routes.utils.status = FINISHED
+      console.log(output)
       await output.map(
         async ({ fileName, code = '', source = '' }) => {
+          console.log(fileName)
           await rename(
             fileName,
             fileName.replace(/(.+)(?=\..+?$)/, (m, p1) => p1.replace(/((?<=\.)es)?$/, getDigest(code + source)))

@@ -12,3 +12,9 @@ const goToSupplier = () => {
   router.push('/supplier/xx')
 }
 </script>
+
+<style>
+.container {
+  color: aqua;
+}
+</style>

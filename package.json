@@ -3,6 +3,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^1.2.5",
     "execa": "^5.1.1",
+    "fast-glob": "^3.2.7",
     "prettier": "npm:@xxgjzftd/prettier",
     "typescript": "^4.3.5",
     "vite": "^2.4.0",
@@ -13,7 +14,9 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "local": "node scripts/build.js",
+    "qa": "node scripts/build.js qa",
+    "prod": "node scripts/build.js prod"
   },
   "type": "module",
   "version": "1.0.0",

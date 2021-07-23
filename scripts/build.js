@@ -1,6 +1,6 @@
 import { createHash } from 'crypto'
 import { basename, resolve, normalize } from 'path'
-import { writeFile, rename } from 'fs/promises'
+import { writeFile, rename, rm } from 'fs/promises'
 import { createRequire } from 'module'
 import { argv } from 'process'
 
@@ -33,14 +33,59 @@ try {
   meta = {}
 }
 
+let sources = []
 if (meta.hash) {
   const { stdout } = execa.sync('git', ['diff', meta.hash, 'HEAD', '--name-only'])
-  entries = stdout.split('\n')
+  sources = stdout.split('\n').map(
+    (info) => {
+      const [status, path] = info.split('\t')
+      return { status, path }
+    }
+  )
 } else {
-  entries = fq.sync('packages/*/src/**/*.{ts,tsx,vue}')
+  sources = fq.sync('packages/*/src/**/*.{ts,tsx,vue}').map(
+    (path) => {
+      return { status: 'A', path }
+    }
+  )
 }
 
+const helper = {
+  rm (path) {
+    // TODO: oss rm
+    rm(path)
+  },
+  getPackageInfo (path) {
+    return require(resolve(path.replace(/(?<=(.+?\/){2}).+/, 'package.json')))
+  },
+  getModuleName (path) {}
+}
+const built = new Set()
 const getPackageInfo = (path) => require(resolve(path.replace(/(?<=(.+?\/){2}).+/, 'package.json')))
+const build = ({ path, status }) => {
+  const pkg = getPackageInfo(path)
+  const {
+    name,
+    mfe: { type, entry }
+  } = pkg
+  switch (type) {
+    case 'pages':
+      if (status === 'D') {
+        helper.rm(path)
+      } else {
+      }
+      return builder.lib(resolve(path), pkg)
+    case 'components':
+    case 'utils':
+    case 'container':
+      return (
+        built.has(type) ||
+        (built.add(type), builder[type === 'container' ? type : 'lib'](path.replace(/(?<=(.+?\/){2}).+/, entry), pkg))
+      )
+    default:
+      throw new Error(`${name} type 未指定`)
+  }
+}
 
 const VIRTUALPAGE = 'VIRTUALPAGE'
 const PAGE = 'PAGE'
@@ -236,28 +281,7 @@ const builder = {
     )
   }
 }
-const built = new Set()
-const build = (path) => {
-  const pkg = getPackageInfo(path)
-  const {
-    name,
-    mfe: { type, entry }
-  } = pkg
-  switch (type) {
-    case 'pages':
-      return builder.lib(`${VIRTUALPAGE}?${path}`, pkg)
-    // return builder.lib(resolve(path), pkg)
-    case 'components':
-    case 'utils':
-    case 'container':
-      return (
-        built.has(type) ||
-        (built.add(type), builder[type === 'container' ? type : 'lib'](path.replace(/(?<=(.+?\/){2}).+/, entry), pkg))
-      )
-    default:
-      throw new Error(`${name} type 未指定`)
-  }
-}
+
 let entries = []
 if (meta.data.hash) {
   const { stdout } = execa.sync('git', ['diff', meta.data.hash, 'HEAD', '--name-only'])

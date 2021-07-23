@@ -1,0 +1,27 @@
+{
+  "modules": {
+    "vue": {
+      "js": "/assets/vue-xxxxxxxx.js"
+    },
+    "@vue-mfe/utils": {
+      "js": "/assets/utils-xxxxxxxx.js"
+    },
+    "@vue-mfe/components": {
+      "js": "/assets/components-xxxxxxxx.js",
+      "css": "/assets/components-xxxxxxxx.css"
+    },
+    "@vue-mfe/supplier/src/pages/xx/index.vue": {
+      "js": "/assets/index-xxxxxxxx.js",
+      "css": "/assets/index-xxxxxxxx.css",
+      "imports": {
+        "@vue-mfe/supplier/src/components/input-base.vue": ["default"],
+        "vue": ["reactive", "ref"]
+      }
+    },
+    "@vue-mfe/supplier/src/components/input-base.vue": {
+      "js": "/assets/input-base-xxxxxxxx.js",
+      "css": "/assets/input-base-xxxxxxxx.css"
+    }
+  },
+  "hash": "xxxxxx"
+}

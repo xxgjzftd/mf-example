@@ -4,13 +4,9 @@
   "private": true,
   "author": "xxgjzftd <xxgjzftd@gmail.com>",
   "license": "MIT",
-  "scripts": {
-    "build": "vue-tsc --noEmit && vite build",
-    "serve": "vite preview"
-  },
+  "main": "src/index.ts",
   "mfe": {
-    "type": "utils",
-    "entry": "src/index.ts"
+    "type": "utils"
   },
   "dependencies": {
     "axios": "^0.21.1",

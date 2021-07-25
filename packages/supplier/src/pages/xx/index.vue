@@ -7,6 +7,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAajax } from '@vue-mfe/utils'
 import InputBase from '@supplier/components/input-base.vue'
 
 let count = ref('x')
@@ -15,6 +16,7 @@ const router = useRouter()
 const goToDetail = () => {
   router.push('/supplier/xx/detail')
 }
+console.log(useAajax())
 </script>
 
 <style>

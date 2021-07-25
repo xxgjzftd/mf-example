@@ -36,12 +36,15 @@ try {
 let sources = []
 if (meta.hash) {
   const { stdout } = execa.sync('git', ['diff', meta.hash, 'HEAD', '--name-only'])
-  sources = stdout.split('\n').map(
-    (info) => {
-      const [status, path] = info.split('\t')
-      return { status, path }
-    }
-  )
+  sources = stdout
+    .split('\n')
+    .map(
+      (info) => {
+        const [status, path] = info.split('\t')
+        return { status, path }
+      }
+    )
+    .filter(({ path }) => /packages\/.+?\/src\/.+/.test(path))
 } else {
   sources = fq.sync('packages/*/src/**/*.{ts,tsx,vue}').map(
     (path) => {
@@ -50,30 +53,80 @@ if (meta.hash) {
   )
 }
 
+const cached = (fn) => {
+  const cache = Object.create(null)
+  return (str) => cache[str] || (cache[str] = fn(str))
+}
 const helper = {
+  localPkgNameRegExp: /^@vue-mfe\//,
   rm (path) {
     // TODO: oss rm
     rm(path)
   },
-  getPackageInfo (path) {
-    return require(resolve(path.replace(/(?<=(.+?\/){2}).+/, 'package.json')))
-  },
-  getModuleName (path) {}
+  getPackageInfo: cached((path) => require(resolve(path.replace(/(?<=(.+?\/){2}).+/, 'package.json')))),
+  getModuleName: cached(
+    (path) => {
+      const pkg = helper.getPackageInfo(path)
+      const {
+        name,
+        mfe: { type }
+      } = pkg
+      if (type === 'pages') {
+        return path.replace(/.+?\/.+?(?=\/)/, name)
+      } else {
+        return name
+      }
+    }
+  ),
+  getAliasKey: cached((path) => path.replace(/^packages\/(.+?)\/.+/, '@$1')),
+  getAlias: cached(
+    (path) => {
+      const pkg = helper.getPackageInfo(path)
+      const {
+        mfe: { type }
+      } = pkg
+      const alias = {}
+      if (type !== 'pages') {
+        alias[helper.getAliasKey(path)] = resolve(path.replace(/(?<=packages\/.+?\/src).+/, ''))
+      }
+      return alias
+    }
+  ),
+  getExternal: cached(
+    (path) => {
+      const pkg = helper.getPackageInfo(path)
+      const {
+        mfe: { type },
+        dependencies
+      } = pkg
+      const external = [...Object.keys(dependencies), localPkgNameRegExp]
+      if (type === 'pages') {
+        const aliasKey = helper.getAliasKey(path)
+        external.push(new RegExp(aliasKey + '/.+\\.(vue|ts|tsx)'))
+      }
+      return external
+    }
+  ),
+  getAllDeps () {
+    const dependencies = new Set()
+    fq.sync('packags/*/package.json').map(
+      (path) => Object.keys(require(resolve(path)).dependencies).forEach((dep) => dependencies.add(dep))
+    )
+    return Array.from(dependencies)
+  }
 }
 const built = new Set()
-const getPackageInfo = (path) => require(resolve(path.replace(/(?<=(.+?\/){2}).+/, 'package.json')))
 const build = ({ path, status }) => {
-  const pkg = getPackageInfo(path)
+  const pkg = helper.getPackageInfo(path)
   const {
     name,
-    mfe: { type, entry }
+    mfe: { type }
   } = pkg
+  if (status !== 'A') {
+    helper.rm(helper.getModuleName(path))
+  }
   switch (type) {
     case 'pages':
-      if (status === 'D') {
-        helper.rm(path)
-      } else {
-      }
       return builder.lib(resolve(path), pkg)
     case 'components':
     case 'utils':
@@ -84,91 +137,6 @@ const build = ({ path, status }) => {
       )
     default:
       throw new Error(`${name} type 未指定`)
-  }
-}
-
-const VIRTUALPAGE = 'VIRTUALPAGE'
-const PAGE = 'PAGE'
-const VENDOR = resolve('xx')
-const DIST = 'dist'
-const ASSETS = 'assets'
-
-const localPkgNameRegExp = /^@vue-mfe\//
-
-const allDeps = new Set()
-const addToAllDeps = (dependencies) => dependencies.forEach((dep) => allDeps.add(dep))
-const getAlias = (name) => {
-  const dir = name.replace(localPkgNameRegExp, '')
-  return {
-    [`@${dir}`]: resolve(`packages/${dir}/src`)
-  }
-}
-const getExternal = (dependencies) => [...Object.keys(dependencies), localPkgNameRegExp]
-
-const valid = (entry, { name, dependencies }) => {
-  return {
-    name: 'vue-mfe-valid',
-    generateBundle (options, bundle) {
-      Object.keys(bundle).forEach(
-        (fileName) => {
-          const { importedBindings = {} } = bundle[fileName]
-          Object.keys(importedBindings).forEach(
-            (imported) => {
-              if (Object.keys(dependencies).find((dep) => dep === imported)) {
-                const vendor = (meta.data.vendors[imported] = meta.data.vendors[imported] || {})
-                const bindings = (vendor.bindings = vendor.bindings || {})
-                const stales = new Set(Object.keys(bindings))
-                importedBindings[imported].forEach(
-                  (binding) => {
-                    const entries = (bindings[binding] = bindings[binding] || [])
-                    if (!entries.find((e) => e === entry)) {
-                      entries.push(entry)
-                    }
-                    stales.delete(binding)
-                  }
-                )
-                stales.forEach(
-                  (binding) => {
-                    const entries = bindings[binding]
-                    const index = entries.findIndex((e) => e === entry)
-                    if (~index) {
-                      entries.splice(index, 1)
-                    }
-                  }
-                )
-              } else if (!localPkgNameRegExp.test(imported)) {
-                throw new Error(`${name} 中依赖了 ${imported}， 但没有在 package.json 中声明`)
-              }
-            }
-          )
-        }
-      )
-    }
-  }
-}
-
-const pages = () => {
-  return {
-    name: 'vue-mfe-page',
-    enforce: 'pre',
-    resolveId (source, importer, options) {
-      if (source.startsWith(VIRTUALPAGE)) {
-        return source
-      }
-      if (source.startsWith(PAGE)) {
-        const entry = source.split('?', 2)[1]
-        return this.resolve(resolve(entry))
-      }
-    },
-    load (id) {
-      if (id.startsWith(VIRTUALPAGE)) {
-        const entry = id.split('?', 2)[1]
-        return `const page = () => import("${PAGE + '?' + entry}");export default page;`
-      }
-    },
-    generateBundle (options, bundle) {
-      console.log(bundle)
-    }
   }
 }
 
@@ -252,7 +220,7 @@ const builder = {
               format: 'es'
             },
             preserveEntrySignatures: 'allow-extension',
-            external: [...external, /^@supplier/]
+            external: helper.getExternal(path)
           }
         },
         plugins: [pages(), vue(), valid(entry, pkg)]
@@ -279,6 +247,94 @@ const builder = {
         plugins: [vue(), valid(entry, pkg)]
       }
     )
+  }
+}
+
+await sources.map(build)
+// write meta transform html
+
+const VIRTUALPAGE = 'VIRTUALPAGE'
+const PAGE = 'PAGE'
+const VENDOR = resolve('xx')
+const DIST = 'dist'
+const ASSETS = 'assets'
+
+const localPkgNameRegExp = /^@vue-mfe\//
+
+const allDeps = new Set()
+const addToAllDeps = (dependencies) => dependencies.forEach((dep) => allDeps.add(dep))
+const getAlias = (name) => {
+  const dir = name.replace(localPkgNameRegExp, '')
+  return {
+    [`@${dir}`]: resolve(`packages/${dir}/src`)
+  }
+}
+const getExternal = (dependencies) => [...Object.keys(dependencies), localPkgNameRegExp]
+
+const valid = (entry, { name, dependencies }) => {
+  return {
+    name: 'vue-mfe-valid',
+    generateBundle (options, bundle) {
+      Object.keys(bundle).forEach(
+        (fileName) => {
+          const { importedBindings = {} } = bundle[fileName]
+          Object.keys(importedBindings).forEach(
+            (imported) => {
+              if (Object.keys(dependencies).find((dep) => dep === imported)) {
+                const vendor = (meta.data.vendors[imported] = meta.data.vendors[imported] || {})
+                const bindings = (vendor.bindings = vendor.bindings || {})
+                const stales = new Set(Object.keys(bindings))
+                importedBindings[imported].forEach(
+                  (binding) => {
+                    const entries = (bindings[binding] = bindings[binding] || [])
+                    if (!entries.find((e) => e === entry)) {
+                      entries.push(entry)
+                    }
+                    stales.delete(binding)
+                  }
+                )
+                stales.forEach(
+                  (binding) => {
+                    const entries = bindings[binding]
+                    const index = entries.findIndex((e) => e === entry)
+                    if (~index) {
+                      entries.splice(index, 1)
+                    }
+                  }
+                )
+              } else if (!localPkgNameRegExp.test(imported)) {
+                throw new Error(`${name} 中依赖了 ${imported}， 但没有在 package.json 中声明`)
+              }
+            }
+          )
+        }
+      )
+    }
+  }
+}
+
+const pages = () => {
+  return {
+    name: 'vue-mfe-page',
+    enforce: 'pre',
+    resolveId (source, importer, options) {
+      if (source.startsWith(VIRTUALPAGE)) {
+        return source
+      }
+      if (source.startsWith(PAGE)) {
+        const entry = source.split('?', 2)[1]
+        return this.resolve(resolve(entry))
+      }
+    },
+    load (id) {
+      if (id.startsWith(VIRTUALPAGE)) {
+        const entry = id.split('?', 2)[1]
+        return `const page = () => import("${PAGE + '?' + entry}");export default page;`
+      }
+    },
+    generateBundle (options, bundle) {
+      console.log(bundle)
+    }
   }
 }
 

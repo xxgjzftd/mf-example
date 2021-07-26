@@ -7,7 +7,7 @@
 
 <script lang="ts" setup>
 import { ref } from 'vue'
-import InputBase from '@supplier/components/input-base.vue'
+import { InputBase } from '@vue-mfe/components'
 
 let count = ref('x')
 const inc = () => (count.value += 'x')

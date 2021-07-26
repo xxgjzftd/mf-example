@@ -4,10 +4,6 @@
   "private": true,
   "author": "xxgjzftd <xxgjzftd@gmail.com>",
   "license": "MIT",
-  "scripts": {
-    "build": "vue-tsc --noEmit && vite build",
-    "serve": "vite preview"
-  },
   "mfe": {
     "type": "pages"
   },

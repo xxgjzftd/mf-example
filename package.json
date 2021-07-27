@@ -16,7 +16,8 @@
     "dev": "vite",
     "local": "node scripts/build.js",
     "qa": "node scripts/build.js qa",
-    "prod": "node scripts/build.js prod"
+    "prod": "node scripts/build.js prod",
+    "preview": "vite preview"
   },
   "type": "module",
   "version": "1.0.0",

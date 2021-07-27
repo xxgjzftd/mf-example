@@ -375,14 +375,14 @@ Object.keys(preVendorsExports).forEach(
 )
 
 await Promise.all(vendors)
-console.log(meta)
 await Promise.all(
   [
     writeFile(resolve(`${DIST}/meta.json`), JSON.stringify(meta, 2)),
     readFile(resolve(`${DIST}/index.html`), { encoding: 'utf8' }).then(
       (html) => {
-        let importmap = {}
-        Object.keys(meta.modules).forEach((mn) => (importmap[mn] = meta.modules[mn].js))
+        let importmap = { imports: {} }
+        const imports = importmap.imports
+        Object.keys(meta.modules).forEach((mn) => (imports[mn] = meta.modules[mn].js))
         importmap = `<script type="importmap">${JSON.stringify(importmap)}</script>`
         let modules = `<script>window.mfe = window.mfe || {};window.mfe.modules = ${JSON.stringify(
           meta.modules

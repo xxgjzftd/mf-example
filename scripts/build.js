@@ -55,6 +55,7 @@ if (meta.hash) {
     }
   )
 }
+meta.hash = execa.sync('git', ['rev-parse', '--short', 'HEAD'])
 
 const cached = (fn) => {
   const cache = Object.create(null)

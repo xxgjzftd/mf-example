@@ -1,6 +1,5 @@
-import { createHash } from 'crypto'
-import { basename, resolve, normalize } from 'path'
-import { writeFile, rename, rm } from 'fs/promises'
+import { resolve } from 'path'
+import { readFile, writeFile, rm } from 'fs/promises'
 import { createRequire } from 'module'
 import { argv } from 'process'
 
@@ -11,10 +10,13 @@ import axios from 'axios'
 import fq from 'fast-glob'
 
 import resolvers from '../resolvers/index.js'
-import config from '../mfe.config.js'
 
 const require = createRequire(import.meta.url)
 
+const DIST = 'dist'
+const ASSETS = 'assets'
+const VENDOR = 'vendor'
+const ROUTES = 'routes'
 let meta
 const mode = argv[2]
 try {
@@ -26,7 +28,7 @@ try {
       meta = await axios.get('prod meta oss url')
       break
     default:
-      meta = require(resolve('meta.json'))
+      meta = require(resolve(`${DIST}/meta.json`))
       break
   }
 } catch (error) {
@@ -59,6 +61,7 @@ const cached = (fn) => {
   return (str) => cache[str] || (cache[str] = fn(str))
 }
 const helper = {
+  scope: '@vue-mfe',
   localPkgNameRegExp: /^@vue-mfe\//,
   isLocalPkg: cached((pkgName) => helper.localPkgNameRegExp.test(pkgName)),
   rm (mn) {
@@ -111,7 +114,9 @@ const helper = {
       const alias = []
       const aliasKey = helper.getAliasKeyFromPkgId(pkgId)
       if (type === 'pages') {
-        alias.push({ find: new RegExp(aliasKey + '(/.+\\.(vue|ts|tsx))'), replacement: `@vue-mfe/${pkgId}/src$1` })
+        alias.push(
+          { find: new RegExp(aliasKey + '(/.+\\.(vue|ts|tsx))'), replacement: `${helper.scope}/${pkgId}/src$1` }
+        )
       }
       alias.push({ find: aliasKey, replacement: resolve(`packages/${pkgId}/src`) })
       return alias
@@ -138,7 +143,7 @@ const helper = {
           Object.keys(imports).forEach(
             (imported) => {
               if (!helper.isLocalPkg(imported)) {
-                const bindings = (vendorsExports[mn] = vendorsExports[mn] || new Set())
+                const bindings = (vendorsExports[imported] = vendorsExports[imported] || new Set())
                 imports[imported].forEach((binding) => bindings.add(binding))
               }
             }
@@ -156,9 +161,6 @@ const helper = {
   }
 }
 
-const DIST = 'dist'
-const ASSETS = 'assets'
-const VENDOR = 'vendor'
 const preVendorsExports = helper.getVendorsExports()
 const plugins = {
   meta (pathOrMN, isVendor = false) {
@@ -177,9 +179,47 @@ const plugins = {
       }
     }
   },
+  routes () {
+    return {
+      name: 'vue-mfe-routes',
+      resolveId (source, importer, options) {
+        if (source === ROUTES) {
+          return ROUTES
+        }
+      },
+      async load (id) {
+        if (id === ROUTES) {
+          // 不检查包类型，提升性能。
+          const pages = await fq('packages/*/src/pages/**/*.{vue,tsx}')
+          return (
+            'export default [' +
+            pages
+              .map(
+                (path) =>
+                  `{ path: ${path.replace(
+                    /packages\/(.+?)\/src\/pages\/(.+?)(\/index)?\.(vue|tsx)/,
+                    '"/$1/$2"'
+                  )}, component: () => preload("${path.replace(/^packages/, helper.scope)}") }`
+              )
+              .join(',') +
+            ']'
+          )
+        }
+      }
+    }
+  },
+  // 如果有动态import的需求，再加上相应实现。暂时不用这个plugin。
   import () {
     return {
-      name: 'vue-mfe-meta'
+      name: 'vue-mfe-import',
+      options (options) {
+        const index = options.plugins.findIndex((plugin) => plugin.name === 'vite:import-analysis')
+        if (~index) {
+          options.plugins.splice(index, 1)
+        } else {
+          throw new Error('vite 内置插件有变动，构建结果可能有缺陷')
+        }
+      }
     }
   }
 }
@@ -194,14 +234,12 @@ const builder = {
           minify: false,
           emptyOutDir: false,
           lib: {
-            entry: VENDOR,
+            entry: resolve(VENDOR),
             fileName: `${ASSETS}/${mn}.[hash]`,
             formats: ['es']
           },
           rollupOptions: {
-            output: {
-              external: helper.getAllDeps()
-            }
+            external: helper.getAllDeps()
           }
         },
         plugins: [
@@ -209,7 +247,7 @@ const builder = {
             name: 'vue-mfe-vendors',
             enforce: 'pre',
             resolveId (source, importer, options) {
-              if (source === VENDOR) {
+              if (source === resolve(VENDOR)) {
                 return VENDOR
               }
             },
@@ -281,20 +319,7 @@ const builder = {
             external: helper.getExternal(path)
           }
         },
-        plugins: [
-          vue(),
-          plugins.meta(path),
-          {
-            options (options) {
-              const index = options.plugins.findIndex((plugin) => plugin.name === 'vite:import-analysis')
-              if (~index) {
-                options.plugins.splice(index, 1)
-              } else {
-                throw new Error('vite 内置插件有变动，构建结果可能有缺陷')
-              }
-            }
-          }
-        ]
+        plugins: [vue(), plugins.meta(path), plugins.routes()]
       }
     )
   }
@@ -313,55 +338,59 @@ const build = async ({ path, status }) => {
   }
   switch (type) {
     case 'pages':
-      return builder.lib(path, pkg)
+      return builder.lib(path)
     case 'components':
     case 'utils':
     case 'container':
       return (
         built.has(name) ||
-        (built.add(name), builder[type === 'container' ? type : 'lib'](path.replace(/(?<=(.+?\/){2}).+/, main), pkg))
+        (built.add(name), builder[type === 'container' ? type : 'lib'](path.replace(/(?<=(.+?\/){2}).+/, main)))
       )
     default:
       throw new Error(`${name} type 未指定`)
   }
 }
 
-// await sources.map(build)
-// write meta transform html
+await Promise.all(sources.map(build))
 
+const vendors = []
+const curVendorsExports = helper.getVendorsExports()
+Object.keys(curVendorsExports).forEach(
+  (vendor) => {
+    const preExports = preVendorsExports[vendor]
+    const curExports = curVendorsExports[vendor]
+    if (!preExports || preExports.toString() !== curExports.toString()) {
+      helper.rm(vendor)
+      vendors.push(builder.vendors(vendor, curExports))
+    }
+  }
+)
+Object.keys(preVendorsExports).forEach(
+  (vendor) => {
+    if (!(vendor in curVendorsExports)) {
+      helper.rm(vendor)
+    }
+  }
+)
+
+await Promise.all(vendors)
+console.log(meta)
 await Promise.all(
   [
-    // { path: 'packages/supplier/src/pages/xx/index.vue', status: 'A' },
-    // { path: 'packages/components/src/input-base.vue', status: 'A' },
-    // { path: 'packages/utils/src/index.ts', status: 'A' },
-    { path: 'packages/container/src/app.vue', status: 'A' }
-  ].map(build)
+    writeFile(resolve(`${DIST}/meta.json`), JSON.stringify(meta, 2)),
+    readFile(resolve(`${DIST}/index.html`), { encoding: 'utf8' }).then(
+      (html) => {
+        let importmap = {}
+        Object.keys(meta.modules).forEach((mn) => (importmap[mn] = meta.modules[mn].js))
+        importmap = `<script type="importmap">${JSON.stringify(importmap)}</script>`
+        let modules = `<script>window.mfe = window.mfe || {};window.mfe.modules = ${JSON.stringify(
+          meta.modules
+        )}</script>`
+        return writeFile(resolve(`${DIST}/index.html`), html.replace('<!-- mfe placeholder -->', importmap + modules))
+      }
+    )
+  ]
 )
-// await build({ path: 'packages/supplier/src/pages/xx/index.vue', status: 'A' })
-
-// const vendors = []
-// const curVendorsExports = helper.getVendorsExports()
-// Object.keys(curVendorsExports).forEach(
-//   (vendor) => {
-//     const preExports = preVendorsExports[vendor]
-//     const curExports = curVendorsExports[vendor]
-//     if (preExports && preExports.toString() !== curExports.toString()) {
-//       vendors.push(builder.vendors(vendor, curExports))
-//     }
-//   }
-// )
-
-// await Promise.all(vendors)
-console.log(meta)
-
-// await build('packages/container/src/index.ts')
-// console.log(meta.data)
-
-// build('packages/utils/src/index.ts')
-// console.log(meta.data)
 
 // TODO: dev route
 // TODO: oss
-// TODO: route
-// TODO: meta.json write load
-// TODO: preloda

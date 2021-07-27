@@ -12,7 +12,8 @@
     "paths": {
       "@components/*": ["packages/components/src/*"],
       "@container/*": ["packages/container/src/*"],
-      "@supplier/*": ["packages/supplier/src/*"]
+      "@supplier/*": ["packages/supplier/src/*"],
+      "@utils/*": ["packages/utils/src/*"]
     },
     "resolveJsonModule": true,
     "sourceMap": true,

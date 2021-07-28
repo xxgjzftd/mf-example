@@ -23,6 +23,6 @@ const goToDetail = () => {
 
 <style>
 .xx {
-  color: black;
+  color: azure;
 }
 </style>

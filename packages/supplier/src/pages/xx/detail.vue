@@ -1,5 +1,5 @@
 <template>
-  <h1>supplier detail</h1>
+  <h1>supplier detail ~</h1>
   <p>{{ count }}</p>
   <button @click="inc">inc</button>
   <input-base v-model:value="count"></input-base>

@@ -9,6 +9,7 @@ import execa from 'execa'
 import axios from 'axios'
 import fq from 'fast-glob'
 
+import { routes } from './shared.js'
 import resolvers from '../resolvers/index.js'
 
 const require = createRequire(import.meta.url)
@@ -16,7 +17,6 @@ const require = createRequire(import.meta.url)
 const DIST = 'dist'
 const ASSETS = 'assets'
 const VENDOR = 'vendor'
-const ROUTES = 'routes'
 let meta
 let ossUrl
 const mode = argv[2]
@@ -197,35 +197,6 @@ const plugins = {
       }
     }
   },
-  routes () {
-    return {
-      name: 'vue-mfe-routes',
-      resolveId (source, importer, options) {
-        if (source === ROUTES) {
-          return ROUTES
-        }
-      },
-      async load (id) {
-        if (id === ROUTES) {
-          // 不检查包类型，提升性能。
-          const pages = await fq('packages/*/src/pages/**/*.{vue,tsx}')
-          return (
-            'export default [' +
-            pages
-              .map(
-                (path) =>
-                  `{ path: ${path.replace(
-                    /packages\/(.+?)\/src\/pages\/(.+?)(\/index)?\.(vue|tsx)/,
-                    '"/$1/$2"'
-                  )}, component: () => mfe.preload("${path.replace(/^packages/, helper.scope)}") }`
-              )
-              .join(',') +
-            ']'
-          )
-        }
-      }
-    }
-  },
   // 如果有动态import的需求，再加上相应实现。暂时不用这个plugin。
   import () {
     return {
@@ -350,7 +321,7 @@ const builder = {
             external: helper.getExternal(path)
           }
         },
-        plugins: [vue(), plugins.meta(path), plugins.routes()]
+        plugins: [vue(), plugins.meta(path), routes()]
       }
     )
   }

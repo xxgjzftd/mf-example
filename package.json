@@ -13,7 +13,7 @@
   "name": "web",
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.js",
     "local": "node scripts/build.js",
     "qa": "node scripts/build.js qa",
     "prod": "node scripts/build.js prod",

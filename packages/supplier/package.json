@@ -8,7 +8,7 @@
     "type": "pages"
   },
   "dependencies": {
-    "vue": "^3.1.4",
+    "vue": "^3.1.5",
     "vue-router": "4"
   }
 }

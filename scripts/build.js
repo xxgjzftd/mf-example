@@ -41,7 +41,7 @@ meta.modules = meta.modules || {}
 
 let sources = []
 if (meta.hash) {
-  const { stdout } = execa.sync('git', ['diff', meta.hash, 'HEAD', '--name-only'])
+  const { stdout } = execa.sync('git', ['diff', meta.hash, 'HEAD', '--name-status'])
   sources = stdout
     .split('\n')
     .map(

@@ -364,6 +364,10 @@ Object.keys(curVendorsExports).forEach(
     const preExports = preVendorsExports[vendor]
     const curExports = curVendorsExports[vendor]
     if (!preExports || preExports.toString() !== curExports.toString()) {
+      allDeps.size &&
+        fq
+          .sync('packages/*/package.json')
+          .map((path) => Object.keys(require(resolve(path)).dependencies).forEach((dep) => allDeps.add(dep)))
       helper.rm(vendor)
       vendors.push(builder.vendors(vendor, curExports))
     }
@@ -377,10 +381,6 @@ Object.keys(preVendorsExports).forEach(
   }
 )
 
-vendors.length &&
-  fq
-    .sync('packages/*/package.json')
-    .map((path) => Object.keys(require(resolve(path)).dependencies).forEach((dep) => allDeps.add(dep)))
 await Promise.all(vendors)
 await Promise.all(
   [

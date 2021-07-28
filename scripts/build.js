@@ -7,7 +7,7 @@ import vite from 'vite'
 import vue from '@vitejs/plugin-vue'
 import execa from 'execa'
 import axios from 'axios'
-import fq from 'fast-glob'
+import fg from 'fast-glob'
 
 import { routes } from './shared.js'
 import resolvers from '../resolvers/index.js'
@@ -52,7 +52,7 @@ if (meta.hash) {
     )
     .filter(({ path }) => /packages\/.+?\/src\/.+/.test(path))
 } else {
-  sources = fq.sync('packages/*/src/**/*.{ts,tsx,vue}').map(
+  sources = fg.sync('packages/*/src/**/*.{ts,tsx,vue}').map(
     (path) => {
       return { status: 'A', path }
     }

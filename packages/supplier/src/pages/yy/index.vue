@@ -5,5 +5,5 @@
 </template>
 
 <script lang="ts" setup>
-import CustomerList from '@supplier/customer-list.vue'
+import CustomerList from '@supplier/components/customer-list.vue'
 </script>

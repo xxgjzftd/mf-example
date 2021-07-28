@@ -20,7 +20,6 @@ const ROUTES = 'routes'
 let meta
 let ossUrl
 const mode = argv[2]
-const allDeps = new Set()
 try {
   switch (mode) {
     case 'qa':
@@ -62,6 +61,7 @@ if (meta.hash) {
 !sources.length && exit()
 meta.hash = execa.sync('git', ['rev-parse', '--short', 'HEAD']).stdout
 
+const vendorsDepInfo = {}
 const cached = (fn) => {
   const cache = Object.create(null)
   return (str) => cache[str] || (cache[str] = fn(str))
@@ -95,7 +95,7 @@ const helper = {
   getPkgId: cached((path) => path.replace(/^packages\/(.+?)\/.+/, '$1')),
   getPkgInfoFromPkgId: cached((pkgId) => require(resolve(`packages/${pkgId}/package.json`))),
   getPkgInfo: cached((path) => helper.getPkgInfoFromPkgId(helper.getPkgId(path))),
-  getModuleName: cached(
+  getLocalModuleName: cached(
     (path) => {
       const pkg = helper.getPkgInfo(path)
       const {
@@ -109,6 +109,7 @@ const helper = {
       }
     }
   ),
+  getModuleInfo: cached((mn) => (meta.modules[mn] = meta.modules[mn] || {})),
   getAliasKeyFromPkgId: cached((pkgId) => `@${pkgId}`),
   getAliasKey: cached((path) => helper.getAliasKeyFromPkgId(helper.getPkgId(path))),
   getAliasFromPkgId: cached(
@@ -133,6 +134,23 @@ const helper = {
     (pkgId) => [...Object.keys(helper.getPkgInfoFromPkgId(pkgId).dependencies), helper.localPkgNameRegExp]
   ),
   getExternal: cached((path) => helper.getExternalFromPkgId(helper.getPkgId(path))),
+  setVendorsDepInfo: cached(
+    (mn) => {
+      const info = (vendorsDepInfo[mn] = vendorsDepInfo[mn] || {})
+      const { peerDependencies } = require(`${mn}/package.json`)
+      if (peerDependencies) {
+        info.dependencies = Object.keys(peerDependencies)
+        info.dependencies.forEach(
+          (dep) => {
+            const depInfo = (vendorsDepInfo[dep] = vendorsDepInfo[dep] || {})
+            depInfo.dependents = depInfo.dependents || []
+            depInfo.dependents.push(dep)
+          }
+        )
+      }
+      return true
+    }
+  ),
   getVendorsExports () {
     const vendorsExports = {}
     Object.keys(meta.modules).forEach(
@@ -142,6 +160,7 @@ const helper = {
           Object.keys(imports).forEach(
             (imported) => {
               if (!helper.isLocalPkg(imported)) {
+                helper.setVendorsDepInfo(imported)
                 const bindings = (vendorsExports[imported] = vendorsExports[imported] || new Set())
                 imports[imported].forEach((binding) => bindings.add(binding))
               }
@@ -166,15 +185,15 @@ const plugins = {
     return {
       name: 'vue-mfe-meta',
       generateBundle (options, bundle) {
-        const mn = isVendor ? pathOrMN : helper.getModuleName(pathOrMN)
-        const m = (meta.modules[mn] = meta.modules[mn] || {})
+        const mn = isVendor ? pathOrMN : helper.getLocalModuleName(pathOrMN)
+        const info = helper.getModuleInfo(mn)
         const fileNames = Object.keys(bundle)
         const js = fileNames.find((fileName) => bundle[fileName].isEntry)
         const css = fileNames.find((fileName) => fileName.endsWith('.css'))
-        m.js = `/${js}`
-        css && (m.css = `/${css}`)
+        info.js = `/${js}`
+        css && (info.css = `/${css}`)
         const { importedBindings } = bundle[js]
-        m.imports = importedBindings
+        info.imports = importedBindings
       }
     }
   },
@@ -222,60 +241,69 @@ const plugins = {
     }
   }
 }
+
 const builder = {
-  async vendors (mn, bindings) {
-    let external = new Set(allDeps)
-    external.delete(mn)
-    external = Array.from(external)
-    return vite.build(
-      {
-        configFile: false,
-        publicDir: false,
-        build: {
-          sourcemap: true,
-          minify: false,
-          emptyOutDir: false,
-          lib: {
-            entry: resolve(VENDOR),
-            fileName: `${ASSETS}/${mn}.[hash]`,
-            formats: ['es']
-          },
-          rollupOptions: {
-            external
-          }
-        },
-        plugins: [
-          {
-            name: 'vue-mfe-vendors',
-            enforce: 'pre',
-            resolveId (source, importer, options) {
-              if (source === resolve(VENDOR)) {
-                return VENDOR
-              }
+  async vendors (mn) {
+    const info = vendorsDepInfo[mn]
+    if (info.dependents) {
+      await Promise.all(info.dependents.map((dep) => builder.vendors(dep)))
+    }
+    const preBindings = preVendorsExports[mn]
+    let curBindings = new Set(curVendorsExports[mn])
+    info.dependents.forEach((dep) => meta.modules[dep].imports[mn].forEach((binding) => curBindings.add(binding)))
+    curBindings = curVendorsExports[mn] = Array.from(curBindings).sort()
+    if (!preBindings || preBindings.toString() !== curBindings.toString()) {
+      helper.rm(mn)
+      return vite.build(
+        {
+          configFile: false,
+          publicDir: false,
+          build: {
+            sourcemap: true,
+            minify: false,
+            emptyOutDir: false,
+            lib: {
+              entry: resolve(VENDOR),
+              fileName: `${ASSETS}/${mn}.[hash]`,
+              formats: ['es']
             },
-            load (id) {
-              if (id === VENDOR) {
-                const resolver = resolvers[mn.replace(/-(\w)/g, (m, p1) => p1.toUpperCase())]
-                if (resolver) {
-                  return bindings
-                    .map(
-                      (binding) => {
-                        const { path, sideEffects } = resolver(binding)
-                        return `${sideEffects ? `import ${optimizedInfo.sideEffects};\n` : ''}
-                          export { default as ${binding} } from "${mn}/${path}";`
-                      }
-                    )
-                    .join('\n')
-                } else {
-                  return `export { ${bindings.toString()} } from "${mn}";`
-                }
-              }
+            rollupOptions: {
+              external: info.dependencies
             }
           },
-          plugins.meta(mn, true)
-        ]
-      }
-    )
+          plugins: [
+            {
+              name: 'vue-mfe-vendors',
+              enforce: 'pre',
+              resolveId (source, importer, options) {
+                if (source === resolve(VENDOR)) {
+                  return VENDOR
+                }
+              },
+              load (id) {
+                if (id === VENDOR) {
+                  const resolver = resolvers[mn.replace(/-(\w)/g, (m, p1) => p1.toUpperCase())]
+                  if (resolver) {
+                    return curBindings
+                      .map(
+                        (binding) => {
+                          const { path, sideEffects } = resolver(binding)
+                          return `${sideEffects ? `import ${optimizedInfo.sideEffects};\n` : ''}
+                            export { default as ${binding} } from "${mn}/${path}";`
+                        }
+                      )
+                      .join('\n')
+                  } else {
+                    return `export { ${curBindings.toString()} } from "${mn}";`
+                  }
+                }
+              }
+            },
+            plugins.meta(mn, true)
+          ]
+        }
+      )
+    }
   },
   // utils components pages
   async lib (path) {
@@ -337,7 +365,7 @@ const build = async ({ path, status }) => {
     mfe: { type }
   } = pkg
   if (status !== 'A') {
-    helper.rm(helper.getModuleName(path))
+    helper.rm(helper.getLocalModuleName(path))
   }
   switch (type) {
     case 'pages':
@@ -357,22 +385,7 @@ const build = async ({ path, status }) => {
 
 await Promise.all(sources.map(build))
 
-const vendors = []
 const curVendorsExports = helper.getVendorsExports()
-Object.keys(curVendorsExports).forEach(
-  (vendor) => {
-    const preExports = preVendorsExports[vendor]
-    const curExports = curVendorsExports[vendor]
-    if (!preExports || preExports.toString() !== curExports.toString()) {
-      !allDeps.size &&
-        fq
-          .sync('packages/*/package.json')
-          .map((path) => Object.keys(require(resolve(path)).dependencies).forEach((dep) => allDeps.add(dep)))
-      helper.rm(vendor)
-      vendors.push(builder.vendors(vendor, curExports))
-    }
-  }
-)
 Object.keys(preVendorsExports).forEach(
   (vendor) => {
     if (!(vendor in curVendorsExports)) {
@@ -381,7 +394,11 @@ Object.keys(preVendorsExports).forEach(
   }
 )
 
-await Promise.all(vendors)
+await Promise.all(
+  Object.keys(curVendorsExports)
+    .filter((vendor) => !vendorsDepInfo[vendor].dependencies)
+    .map((vendor) => builder.vendors(vendor))
+)
 await Promise.all(
   [
     writeFile(resolve(`${DIST}/meta.json`), JSON.stringify(meta, 2)),

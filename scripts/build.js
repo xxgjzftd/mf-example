@@ -217,7 +217,7 @@ const plugins = {
                   `{ path: ${path.replace(
                     /packages\/(.+?)\/src\/pages\/(.+?)(\/index)?\.(vue|tsx)/,
                     '"/$1/$2"'
-                  )}, component: () => preload("${path.replace(/^packages/, helper.scope)}") }`
+                  )}, component: () => mfe.preload("${path.replace(/^packages/, helper.scope)}") }`
               )
               .join(',') +
             ']'
@@ -245,13 +245,14 @@ const plugins = {
 const builder = {
   async vendors (mn) {
     const info = vendorsDepInfo[mn]
+    const preBindings = preVendorsExports[mn]
+    let curBindings = curVendorsExports[mn]
     if (info.dependents) {
       await Promise.all(info.dependents.map((dep) => builder.vendors(dep)))
+      curBindings = new Set(curBindings)
+      info.dependents.forEach((dep) => meta.modules[dep].imports[mn].forEach((binding) => curBindings.add(binding)))
+      curBindings = curVendorsExports[mn] = Array.from(curBindings).sort()
     }
-    const preBindings = preVendorsExports[mn]
-    let curBindings = new Set(curVendorsExports[mn])
-    info.dependents.forEach((dep) => meta.modules[dep].imports[mn].forEach((binding) => curBindings.add(binding)))
-    curBindings = curVendorsExports[mn] = Array.from(curBindings).sort()
     if (!preBindings || preBindings.toString() !== curBindings.toString()) {
       helper.rm(mn)
       return vite.build(

@@ -144,7 +144,7 @@ const helper = {
           (dep) => {
             const depInfo = (vendorsDepInfo[dep] = vendorsDepInfo[dep] || {})
             depInfo.dependents = depInfo.dependents || []
-            depInfo.dependents.push(dep)
+            depInfo.dependents.push(mn)
           }
         )
       }

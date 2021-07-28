@@ -364,7 +364,7 @@ Object.keys(curVendorsExports).forEach(
     const preExports = preVendorsExports[vendor]
     const curExports = curVendorsExports[vendor]
     if (!preExports || preExports.toString() !== curExports.toString()) {
-      allDeps.size &&
+      !allDeps.size &&
         fq
           .sync('packages/*/package.json')
           .map((path) => Object.keys(require(resolve(path)).dependencies).forEach((dep) => allDeps.add(dep)))

@@ -420,7 +420,7 @@ await Promise.all(
           html.replace(
             built.has(containerName)
               ? '<!-- mfe placeholder -->'
-              : /\<script type="importmap"\>.+?\<script\>window\.mfe\.+?<\/script\>/,
+              : /\<script type="importmap"\>.+?\<script\>window\.mfe.+?<\/script\>/,
             importmap + modules
           )
         )

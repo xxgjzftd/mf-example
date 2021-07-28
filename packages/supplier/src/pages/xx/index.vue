@@ -11,7 +11,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { InputBase, ButtonBase } from '@vue-mfe/components'
 
-import CustomerList from '@supplier/customer-list.vue'
+import CustomerList from '@supplier/components/customer-list.vue'
 
 let count = ref('x')
 

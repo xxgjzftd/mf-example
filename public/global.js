@@ -5,7 +5,7 @@
   
   function getDeps (mn) {
     let deps = [];
-    const info = window.mfe.modules[m];
+    const info = window.mfe.modules[mn];
     deps.push(info.js);
     info.css && deps.push(info.css);
     if (info.imports) {

@@ -3,7 +3,7 @@
   <button @click="goToDetail">go to detail</button>
   <input-base v-model:value="count"></input-base>
   <button-base size="mini"></button-base>
-  <customer-list></customer-list>
+  <customer-list name="xx"></customer-list>
 </template>
 
 <script lang="ts" setup>

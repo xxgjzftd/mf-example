@@ -403,7 +403,7 @@ await Promise.all(
 await Promise.all(
   [
     writeFile(resolve(`${DIST}/meta.json`), JSON.stringify(meta, 2)),
-    (built.has(containerName)
+    (built.has(containerName) || !mode
       ? readFile(resolve(`${DIST}/index.html`), { encoding: 'utf8' })
       : axios.get('mode index.html oss url').then((res) => res.data)
     ).then(

@@ -1,7 +1,7 @@
 import { resolve } from 'path'
 import { readFile, writeFile, rm } from 'fs/promises'
 import { createRequire } from 'module'
-import { argv } from 'process'
+import { argv, exit } from 'process'
 
 import vite from 'vite'
 import vue from '@vitejs/plugin-vue'
@@ -18,13 +18,16 @@ const ASSETS = 'assets'
 const VENDOR = 'vendor'
 const ROUTES = 'routes'
 let meta
+let ossUrl
 const mode = argv[2]
 try {
   switch (mode) {
     case 'qa':
+      ossUrl = 'qa oss url'
       meta = await axios.get('qa meta oss url')
       break
     case 'prod':
+      ossUrl = 'prod oss url'
       meta = await axios.get('prod meta oss url')
       break
     default:
@@ -55,6 +58,7 @@ if (meta.hash) {
     }
   )
 }
+!sources.length && exit()
 meta.hash = execa.sync('git', ['rev-parse', '--short', 'HEAD']).stdout
 
 const cached = (fn) => {
@@ -130,7 +134,7 @@ const helper = {
   getExternal: cached((path) => helper.getExternalFromPkgId(helper.getPkgId(path))),
   getAllDeps () {
     const dependencies = new Set()
-    fq.sync('packags/*/package.json').map(
+    fq.sync('packages/*/package.json').map(
       (path) => Object.keys(require(resolve(path)).dependencies).forEach((dep) => dependencies.add(dep))
     )
     return Array.from(dependencies)
@@ -326,6 +330,7 @@ const builder = {
   }
 }
 
+let containerName = ''
 const built = new Set()
 const build = async ({ path, status }) => {
   const pkg = helper.getPkgInfo(path)
@@ -345,7 +350,8 @@ const build = async ({ path, status }) => {
     case 'container':
       return (
         built.has(name) ||
-        (built.add(name), builder[type === 'container' ? type : 'lib'](path.replace(/(?<=(.+?\/){2}).+/, main)))
+        (built.add(name),
+        builder[type === 'container' ? ((containerName = name), type) : 'lib'](path.replace(/(?<=(.+?\/){2}).+/, main)))
       )
     default:
       throw new Error(`${name} type 未指定`)
@@ -378,7 +384,10 @@ await Promise.all(vendors)
 await Promise.all(
   [
     writeFile(resolve(`${DIST}/meta.json`), JSON.stringify(meta, 2)),
-    readFile(resolve(`${DIST}/index.html`), { encoding: 'utf8' }).then(
+    (built.has(containerName)
+      ? readFile(resolve(`${DIST}/index.html`), { encoding: 'utf8' })
+      : axios.get('mode index.html oss url').then((res) => res.data)
+    ).then(
       (html) => {
         let importmap = { imports: {} }
         const imports = importmap.imports
@@ -387,7 +396,15 @@ await Promise.all(
         let modules = `<script>window.mfe = window.mfe || {};window.mfe.modules = ${JSON.stringify(
           meta.modules
         )}</script>`
-        return writeFile(resolve(`${DIST}/index.html`), html.replace('<!-- mfe placeholder -->', importmap + modules))
+        return writeFile(
+          resolve(`${DIST}/index.html`),
+          html.replace(
+            built.has(containerName)
+              ? '<!-- mfe placeholder -->'
+              : /\<script type="importmap"\>.+?\<script\>window\.mfe\.+?<\/script\>/,
+            importmap + modules
+          )
+        )
       }
     )
   ]

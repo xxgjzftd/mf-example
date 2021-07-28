@@ -20,6 +20,7 @@ const ROUTES = 'routes'
 let meta
 let ossUrl
 const mode = argv[2]
+const allDeps = new Set()
 try {
   switch (mode) {
     case 'qa':
@@ -132,13 +133,6 @@ const helper = {
     (pkgId) => [...Object.keys(helper.getPkgInfoFromPkgId(pkgId).dependencies), helper.localPkgNameRegExp]
   ),
   getExternal: cached((path) => helper.getExternalFromPkgId(helper.getPkgId(path))),
-  getAllDeps () {
-    const dependencies = new Set()
-    fq.sync('packages/*/package.json').map(
-      (path) => Object.keys(require(resolve(path)).dependencies).forEach((dep) => dependencies.add(dep))
-    )
-    return Array.from(dependencies)
-  },
   getVendorsExports () {
     const vendorsExports = {}
     Object.keys(meta.modules).forEach(
@@ -230,6 +224,9 @@ const plugins = {
 }
 const builder = {
   async vendors (mn, bindings) {
+    let external = new Set(allDeps)
+    external.delete(mn)
+    external = Array.from(external)
     return vite.build(
       {
         configFile: false,
@@ -244,7 +241,7 @@ const builder = {
             formats: ['es']
           },
           rollupOptions: {
-            external: helper.getAllDeps()
+            external
           }
         },
         plugins: [
@@ -380,6 +377,10 @@ Object.keys(preVendorsExports).forEach(
   }
 )
 
+vendors.length &&
+  fq
+    .sync('packages/*/package.json')
+    .map((path) => Object.keys(require(resolve(path)).dependencies).forEach((dep) => allDeps.add(dep)))
 await Promise.all(vendors)
 await Promise.all(
   [

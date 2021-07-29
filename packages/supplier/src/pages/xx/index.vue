@@ -1,5 +1,5 @@
 <template>
-  <h1>supplier xx index</h1>
+  <h1>supplier xx index ~</h1>
   <button @click="goToDetail">go to detail</button>
   <input-base v-model:value="count"></input-base>
   <button-base size="mini"></button-base>

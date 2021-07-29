@@ -1,22 +1,24 @@
-import { resolve } from 'path'
-
 import vite from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-import { routes } from './shared.js'
+import { routes } from './plugins.js'
+import { isRoute, getDevAlias } from './utils.js'
 
-const server = await vite.createServer(
+const { ws, watcher, moduleGraph, listen } = await vite.createServer(
   {
     configFile: false,
     resolve: {
-      alias: {
-        '@components': resolve('packages/components/src'),
-        '@container': resolve('packages/container/src'),
-        '@supplier': resolve('packages/supplier/src'),
-        '@utils': resolve('packages/utils/src')
-      }
+      alias: getDevAlias()
     },
     plugins: [vue(), routes(true)]
   }
 )
-await server.listen()
+
+const refresh = (path) =>
+  isRoute(path) && (moduleGraph.invalidateModule(moduleGraph.getModuleById(ROUTES)), ws.send({ type: 'full-reload' }))
+
+watcher.on('add', refresh)
+watcher.on('unlink', refresh)
+watcher.on('change', refresh)
+
+await listen()

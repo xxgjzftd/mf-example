@@ -9,26 +9,40 @@ import execa from 'execa'
 import axios from 'axios'
 import fg from 'fast-glob'
 
-import { routes } from './shared.js'
-import resolvers from '../resolvers/index.js'
+import { routes } from './plugins.js'
+import resolvers from './resolvers/index.js'
+import config from '../mfe.config.js'
+import {
+  constants,
+  localPkgNameRegExp,
+  cached,
+  isLocalPkg,
+  getPkgId,
+  getPkgInfoFromPkgId,
+  getPkgInfo,
+  getPkgConfigFromPkgId,
+  getPkgConfig,
+  getLocalModuleName,
+  getAliasKeyFromPkgId,
+  getAliasKey,
+  getAliasFromPkgId,
+  getAlias,
+  getExternalFromPkgId,
+  getExternal
+} from './utils.js'
 
 const require = createRequire(import.meta.url)
 
-const DIST = 'dist'
-const ASSETS = 'assets'
-const VENDOR = 'vendor'
+const { DIST, ASSETS, VENDOR } = constants
 let meta
 let ossUrl
 const mode = argv[2]
 try {
   switch (mode) {
     case 'qa':
-      ossUrl = 'qa oss url'
-      meta = await axios.get('qa meta oss url')
-      break
     case 'prod':
-      ossUrl = 'prod oss url'
-      meta = await axios.get('prod meta oss url')
+      ossUrl = config.oss[mode]
+      meta = await axios.get(`${ossUrl}meta.json`).then((res) => res.data)
       break
     default:
       meta = require(resolve(`${DIST}/meta.json`))
@@ -61,132 +75,80 @@ if (meta.hash) {
 !sources.length && exit()
 meta.hash = execa.sync('git', ['rev-parse', '--short', 'HEAD']).stdout
 
-const vendorsDepInfo = {}
-const cached = (fn) => {
-  const cache = Object.create(null)
-  return (str) => cache[str] || (cache[str] = fn(str))
-}
-const helper = {
-  scope: '@vue-mfe',
-  localPkgNameRegExp: /^@vue-mfe\//,
-  isLocalPkg: cached((pkgName) => helper.localPkgNameRegExp.test(pkgName)),
-  rm (mn) {
-    const info = meta.modules[mn]
-    const removals = []
-    if (info) {
-      info.js && removals.push(info.js)
-      info.css && removals.push(info.css)
-    }
-    if (mode) {
-      removals.forEach(
-        (path) =>
-          rm(
-            resolve(DIST, path.slice(1)),
-            {
-              force: true,
-              recursive: true
-            }
-          )
-      )
-    } else {
-      // oss rm
-    }
-  },
-  getPkgId: cached((path) => path.replace(/^packages\/(.+?)\/.+/, '$1')),
-  getPkgInfoFromPkgId: cached((pkgId) => require(resolve(`packages/${pkgId}/package.json`))),
-  getPkgInfo: cached((path) => helper.getPkgInfoFromPkgId(helper.getPkgId(path))),
-  getLocalModuleName: cached(
-    (path) => {
-      const pkg = helper.getPkgInfo(path)
-      const {
-        name,
-        mfe: { type }
-      } = pkg
-      if (type === 'pages') {
-        return path.replace(/.+?\/.+?(?=\/)/, name)
-      } else {
-        return name
-      }
-    }
-  ),
-  getModuleInfo: cached((mn) => (meta.modules[mn] = meta.modules[mn] || {})),
-  getAliasKeyFromPkgId: cached((pkgId) => `@${pkgId}`),
-  getAliasKey: cached((path) => helper.getAliasKeyFromPkgId(helper.getPkgId(path))),
-  getAliasFromPkgId: cached(
-    (pkgId) => {
-      const pkg = helper.getPkgInfoFromPkgId(pkgId)
-      const {
-        mfe: { type }
-      } = pkg
-      const alias = []
-      const aliasKey = helper.getAliasKeyFromPkgId(pkgId)
-      if (type === 'pages') {
-        alias.push(
-          { find: new RegExp(aliasKey + '(/.+\\.(vue|ts|tsx))'), replacement: `${helper.scope}/${pkgId}/src$1` }
+const remove = (mn) => {
+  const info = meta.modules[mn]
+  const removals = []
+  if (info) {
+    info.js && removals.push(info.js)
+    info.css && removals.push(info.css)
+  }
+  if (!mode) {
+    removals.forEach(
+      (path) =>
+        rm(
+          resolve(DIST, path.slice(1)),
+          {
+            force: true,
+            recursive: true
+          }
         )
-      }
-      alias.push({ find: aliasKey, replacement: resolve(`packages/${pkgId}/src`) })
-      return alias
+    )
+  }
+}
+const getModuleInfo = cached((mn) => (meta.modules[mn] = meta.modules[mn] || {}))
+const vendorsDepInfo = {}
+const setVendorsDepInfo = cached(
+  (mn) => {
+    const info = (vendorsDepInfo[mn] = vendorsDepInfo[mn] || {})
+    const { peerDependencies } = require(`${mn}/package.json`)
+    if (peerDependencies) {
+      info.dependencies = Object.keys(peerDependencies)
+      info.dependencies.forEach(
+        (dep) => {
+          const depInfo = (vendorsDepInfo[dep] = vendorsDepInfo[dep] || {})
+          depInfo.dependents = depInfo.dependents || []
+          depInfo.dependents.push(mn)
+        }
+      )
     }
-  ),
-  getAlias: cached((path) => helper.getAliasFromPkgId(helper.getPkgId(path))),
-  getExternalFromPkgId: cached(
-    (pkgId) => [...Object.keys(helper.getPkgInfoFromPkgId(pkgId).dependencies), helper.localPkgNameRegExp]
-  ),
-  getExternal: cached((path) => helper.getExternalFromPkgId(helper.getPkgId(path))),
-  setVendorsDepInfo: cached(
+    return true
+  }
+)
+const getVendorsExports = () => {
+  const vendorsExports = {}
+  Object.keys(meta.modules).forEach(
     (mn) => {
-      const info = (vendorsDepInfo[mn] = vendorsDepInfo[mn] || {})
-      const { peerDependencies } = require(`${mn}/package.json`)
-      if (peerDependencies) {
-        info.dependencies = Object.keys(peerDependencies)
-        info.dependencies.forEach(
-          (dep) => {
-            const depInfo = (vendorsDepInfo[dep] = vendorsDepInfo[dep] || {})
-            depInfo.dependents = depInfo.dependents || []
-            depInfo.dependents.push(mn)
+      const { imports } = meta.modules[mn]
+      if (imports) {
+        Object.keys(imports).forEach(
+          (imported) => {
+            if (!isLocalPkg(imported)) {
+              setVendorsDepInfo(imported)
+              const bindings = (vendorsExports[imported] = vendorsExports[imported] || new Set())
+              imports[imported].forEach((binding) => bindings.add(binding))
+            }
           }
         )
       }
-      return true
     }
-  ),
-  getVendorsExports () {
-    const vendorsExports = {}
-    Object.keys(meta.modules).forEach(
-      (mn) => {
-        const { imports } = meta.modules[mn]
-        if (imports) {
-          Object.keys(imports).forEach(
-            (imported) => {
-              if (!helper.isLocalPkg(imported)) {
-                helper.setVendorsDepInfo(imported)
-                const bindings = (vendorsExports[imported] = vendorsExports[imported] || new Set())
-                imports[imported].forEach((binding) => bindings.add(binding))
-              }
-            }
-          )
-        }
-      }
-    )
-    Object.keys(vendorsExports).forEach(
-      (vendor) => {
-        vendorsExports[vendor] = Array.from(vendorsExports[vendor])
-        vendorsExports[vendor].sort()
-      }
-    )
-    return vendorsExports
-  }
+  )
+  Object.keys(vendorsExports).forEach(
+    (vendor) => {
+      vendorsExports[vendor] = Array.from(vendorsExports[vendor])
+      vendorsExports[vendor].sort()
+    }
+  )
+  return vendorsExports
 }
 
-const preVendorsExports = helper.getVendorsExports()
+const preVendorsExports = getVendorsExports()
 const plugins = {
   meta (pathOrMN, isVendor = false) {
     return {
       name: 'vue-mfe-meta',
       generateBundle (options, bundle) {
-        const mn = isVendor ? pathOrMN : helper.getLocalModuleName(pathOrMN)
-        const info = helper.getModuleInfo(mn)
+        const mn = isVendor ? pathOrMN : getLocalModuleName(pathOrMN)
+        const info = getModuleInfo(mn)
         const fileNames = Object.keys(bundle)
         const js = fileNames.find((fileName) => bundle[fileName].isEntry)
         const css = fileNames.find((fileName) => fileName.endsWith('.css'))
@@ -225,7 +187,7 @@ const builder = {
       curBindings = curVendorsExports[mn] = Array.from(curBindings).sort()
     }
     if (!preBindings || preBindings.toString() !== curBindings.toString()) {
-      helper.rm(mn)
+      remove(mn)
       return vite.build(
         {
           configFile: false,
@@ -284,7 +246,7 @@ const builder = {
         configFile: false,
         publicDir: false,
         resolve: {
-          alias: helper.getAlias(path)
+          alias: getAlias(path)
         },
         build: {
           sourcemap: true,
@@ -299,7 +261,7 @@ const builder = {
               format: 'es'
             },
             preserveEntrySignatures: 'allow-extension',
-            external: helper.getExternal(path)
+            external: getExternal(path)
           }
         },
         plugins: [vue(), plugins.meta(path)]
@@ -311,14 +273,14 @@ const builder = {
       {
         configFile: false,
         resolve: {
-          alias: helper.getAlias(path)
+          alias: getAlias(path)
         },
         build: {
           sourcemap: true,
           minify: false,
           emptyOutDir: false,
           rollupOptions: {
-            external: helper.getExternal(path)
+            external: getExternal(path)
           }
         },
         plugins: [vue(), plugins.meta(path), routes()]
@@ -330,14 +292,14 @@ const builder = {
 let containerName = ''
 const built = new Set()
 const build = async ({ path, status }) => {
-  const pkg = helper.getPkgInfo(path)
+  const pkg = getPkgInfo(path)
   const {
     name,
     main,
     mfe: { type }
   } = pkg
   if (status !== 'A') {
-    helper.rm(helper.getLocalModuleName(path))
+    remove(getLocalModuleName(path))
   }
   switch (type) {
     case 'pages':
@@ -357,11 +319,11 @@ const build = async ({ path, status }) => {
 
 await Promise.all(sources.map(build))
 
-const curVendorsExports = helper.getVendorsExports()
+const curVendorsExports = getVendorsExports()
 Object.keys(preVendorsExports).forEach(
   (vendor) => {
     if (!(vendor in curVendorsExports)) {
-      helper.rm(vendor)
+      remove(vendor)
     }
   }
 )
@@ -376,7 +338,7 @@ await Promise.all(
     writeFile(resolve(`${DIST}/meta.json`), JSON.stringify(meta, 2)),
     (built.has(containerName) || !mode
       ? readFile(resolve(`${DIST}/index.html`), { encoding: 'utf8' })
-      : axios.get('mode index.html oss url').then((res) => res.data)
+      : axios.get(`${ossUrl}index.html`).then((res) => res.data)
     ).then(
       (html) => {
         let importmap = { imports: {} }
@@ -401,4 +363,4 @@ await Promise.all(
 )
 
 // TODO: refactor
-// TODO: oss
+// TODO: route watch

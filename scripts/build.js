@@ -12,24 +12,7 @@ import fg from 'fast-glob'
 import { routes } from './plugins.js'
 import resolvers from './resolvers/index.js'
 import config from '../mfe.config.js'
-import {
-  constants,
-  localPkgNameRegExp,
-  cached,
-  isLocalPkg,
-  getPkgId,
-  getPkgInfoFromPkgId,
-  getPkgInfo,
-  getPkgConfigFromPkgId,
-  getPkgConfig,
-  getLocalModuleName,
-  getAliasKeyFromPkgId,
-  getAliasKey,
-  getAliasFromPkgId,
-  getAlias,
-  getExternalFromPkgId,
-  getExternal
-} from './utils.js'
+import { constants, cached, isLocalPkg, getPkgInfo, getLocalModuleName, getAlias, getExternal } from './utils.js'
 
 const require = createRequire(import.meta.url)
 

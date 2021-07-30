@@ -14,13 +14,13 @@ const constants = {
   ROUTES: 'routes',
   SCOPE: '@vue-mfe'
 }
-const localPkgNameRegExp = new RegExp(`^${constants.SCOPE}/`)
+const localModuleNameRegExp = new RegExp(`^${constants.SCOPE}/`)
 const cached = (fn) => {
   const cache = Object.create(null)
   return (str) => cache[str] || (cache[str] = fn(str))
 }
 const isRoute = cached((path) => /packages\/.+?\/src\/pages\/.+(vue|tsx)/.test(getNormalizedPath(path)))
-const isLocalPkg = cached((pkgName) => localPkgNameRegExp.test(pkgName))
+const isLocalModule = cached((mn) => localModuleNameRegExp.test(mn))
 const getNormalizedPath = cached((path) => normalizePath(path.replace(cwd(), '')).slice(1))
 const getPkgId = cached((path) => path.replace(/^packages\/(.+?)\/.+/, '$1'))
 const getPkgInfoFromPkgId = cached((pkgId) => require(resolve(`packages/${pkgId}/package.json`)))
@@ -64,16 +64,16 @@ const getDevAlias = () => {
   return alias
 }
 const getExternalFromPkgId = cached(
-  (pkgId) => [...Object.keys(getPkgInfoFromPkgId(pkgId).dependencies), localPkgNameRegExp]
+  (pkgId) => [...Object.keys(getPkgInfoFromPkgId(pkgId).dependencies), localModuleNameRegExp]
 )
 const getExternal = cached((path) => getExternalFromPkgId(getPkgId(path)))
 
 export {
   constants,
-  localPkgNameRegExp,
+  localModuleNameRegExp,
   cached,
   isRoute,
-  isLocalPkg,
+  isLocalModule,
   getPkgId,
   getPkgInfoFromPkgId,
   getPkgInfo,

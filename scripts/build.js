@@ -12,7 +12,7 @@ import fg from 'fast-glob'
 import { routes } from './plugins.js'
 import resolvers from './resolvers/index.js'
 import config from '../mfe.config.js'
-import { constants, cached, isLocalPkg, getPkgInfo, getLocalModuleName, getAlias, getExternal } from './utils.js'
+import { constants, cached, isLocalModule, getPkgInfo, getLocalModuleName, getAlias, getExternal } from './utils.js'
 
 const require = createRequire(import.meta.url)
 
@@ -105,7 +105,7 @@ const getVendorsExports = () => {
       if (imports) {
         Object.keys(imports).forEach(
           (imported) => {
-            if (!isLocalPkg(imported)) {
+            if (!isLocalModule(imported)) {
               setVendorsDepInfo(imported)
               const bindings = (vendorsExports[imported] = vendorsExports[imported] || new Set())
               imports[imported].forEach((binding) => bindings.add(binding))
@@ -139,6 +139,16 @@ const plugins = {
         css && (info.css = `/${css}`)
         const { importedBindings } = bundle[js]
         info.imports = importedBindings
+        Object.keys(importedBindings).forEach(
+          (imported) => {
+            if (
+              isLocalModule(imported) &&
+              (meta.modules[imported] || sources.find((source) => getLocalModuleName(source.path) === imported))
+            ) {
+              throw new Error(`'${mn}'中引用的'${imported}'模块不存在。`)
+            }
+          }
+        )
       }
     }
   },

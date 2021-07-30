@@ -225,7 +225,7 @@ const builder = {
                       .map(
                         (binding) => {
                           const { path, sideEffects } = resolver(binding)
-                          return `${sideEffects ? `import ${optimizedInfo.sideEffects};\n` : ''}
+                          return `${sideEffects ? `import "${mn}/${sideEffects}";\n` : ''}
                             export { default as ${binding} } from "${mn}/${path}";`
                         }
                       )

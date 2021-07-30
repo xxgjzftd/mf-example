@@ -143,7 +143,8 @@ const plugins = {
           (imported) => {
             if (
               isLocalModule(imported) &&
-              (meta.modules[imported] || sources.find((source) => getLocalModuleName(source.path) === imported))
+              !meta.modules[imported] &&
+              !sources.find((source) => getLocalModuleName(source.path) === imported)
             ) {
               throw new Error(`'${mn}'中引用的'${imported}'模块不存在。`)
             }

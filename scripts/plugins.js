@@ -1,6 +1,8 @@
 import fg from 'fast-glob'
+import { constants, stringify } from './utils.js'
+import config from '../mfe.config.js'
 
-const ROUTES = 'routes'
+const { ROUTES } = constants
 
 const routes = (isDev = false) => {
   return {
@@ -14,23 +16,51 @@ const routes = (isDev = false) => {
       if (id === ROUTES) {
         // 不检查包类型，提升性能。
         const pages = await fg('packages/*/src/pages/**/*.{vue,tsx}')
-        return (
-          'export default [' +
-          pages
-            .map(
-              (path) =>
-                `{ path: ${path.replace(
-                  /packages\/(.+?)\/src\/pages\/(.+?)(\/index)?\.(vue|tsx)/,
-                  '"/$1/$2"'
-                )}, component: () => ${
-                  isDev
-                    ? `import("${path.replace(/packages\/(.+?)\/src(.+)/, '@$1$2')}")`
-                    : `mfe.preload("${path.replace(/^packages/, '@vue-mfe')}")`
-                } }`
-            )
-            .join(',') +
-          ']'
+        const routeConfigs = pages.map(
+          (path) => {
+            const id = path.replace(/packages\/(.+?)\/src\/pages\/(.+?)(\/index)?\.(vue|tsx)/, '/$1/$2')
+            return {
+              id,
+              path: id,
+              component: path
+            }
+          }
         )
+        config.routes['/'].children = routeConfigs
+        let routes = []
+        Object.keys(config.routes).forEach(
+          (id) => {
+            const userRouteConfig = config.routes[id]
+            const routeConfigIndex = routeConfigs.findIndex((routeConfig) => routeConfig.id === id)
+            let routeConfig = userRouteConfig
+            if (~routeConfigIndex) {
+              routeConfig = routeConfigs[routeConfigIndex]
+              Object.assign(routeConfig, userRouteConfig)
+            } else {
+              if (!routeConfig.component) {
+                throw new Error(`自定义路由${id}没有指定相应 'component'。`)
+              }
+              routeConfigs.push(Object.assign({ id, path: id }, routeConfig))
+            }
+            if (routeConfig.root) {
+              ~routeConfigIndex ? routeConfigs.splice(routeConfigIndex, 1) : routeConfigs.pop()
+              routes.push(routeConfig)
+            }
+          }
+        )
+
+        routes = stringify(
+          routes,
+          (key, value) => {
+            if (key === 'component') {
+              return isDev
+                ? `() => import("${value.replace(/packages\/(.+?)\/src(.+)/, '@$1$2')}")`
+                : `mfe.preload("${value.replace(/^packages/, '@vue-mfe')}")`
+            }
+          }
+        )
+
+        return `export default ${routes}`
       }
     }
   }

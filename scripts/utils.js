@@ -67,6 +67,24 @@ const getExternalFromPkgId = cached(
   (pkgId) => [...Object.keys(getPkgInfoFromPkgId(pkgId).dependencies), localModuleNameRegExp]
 )
 const getExternal = cached((path) => getExternalFromPkgId(getPkgId(path)))
+const stringify = (payload, replacer) => {
+  const type = typeof payload
+  switch (type) {
+    case 'object':
+      const isArray = Array.isArray(payload)
+      let content = isArray
+        ? payload.map((value, index) => (replacer && replacer(index, value)) ?? stringify(value, replacer))
+        : Object.keys(payload).map(
+            (key) => `${key}:${(replacer && replacer(key, payload[key])) ?? stringify(payload[key], replacer)}`
+          )
+      content = content.join(',')
+      return (replacer && replacer('', payload)) ?? isArray ? `[${content}]` : `{${content}}`
+    case 'function':
+      return payload.toString()
+    default:
+      return JSON.stringify(payload)
+  }
+}
 
 export {
   constants,
@@ -86,5 +104,6 @@ export {
   getAlias,
   getDevAlias,
   getExternalFromPkgId,
-  getExternal
+  getExternal,
+  stringify
 }

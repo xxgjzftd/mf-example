@@ -12,7 +12,16 @@ import fg from 'fast-glob'
 import { routes } from './plugins.js'
 import resolvers from './resolvers/index.js'
 import config from '../mfe.config.js'
-import { constants, cached, isLocalModule, getPkgInfo, getLocalModuleName, getAlias, getExternal } from './utils.js'
+import {
+  constants,
+  cached,
+  isLocalModule,
+  getPkgInfo,
+  getPkgConfig,
+  getLocalModuleName,
+  getAlias,
+  getExternal
+} from './utils.js'
 
 const require = createRequire(import.meta.url)
 
@@ -287,11 +296,8 @@ let containerName = ''
 const built = new Set()
 const build = async ({ path, status }) => {
   const pkg = getPkgInfo(path)
-  const {
-    name,
-    main,
-    mfe: { type }
-  } = pkg
+  const { name, main } = pkg
+  const { type } = getPkgConfig(path)
   if (status !== 'A') {
     remove(getLocalModuleName(path))
   }
@@ -329,7 +335,7 @@ await Promise.all(
 )
 await Promise.all(
   [
-    writeFile(resolve(`${DIST}/meta.json`), JSON.stringify(meta, 2)),
+    writeFile(resolve(`${DIST}/meta.json`), JSON.stringify(meta)),
     (built.has(containerName) || !mode
       ? readFile(resolve(`${DIST}/index.html`), { encoding: 'utf8' })
       : axios.get(`${ossUrl}index.html`).then((res) => res.data)

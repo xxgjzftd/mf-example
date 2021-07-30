@@ -6,7 +6,12 @@ export default {
     utils: { type: 'utils' }
   },
   routes: {
-    'supplier/xx': {
+    '/': {
+      path: '/',
+      component: 'packages/container/src/pages/layout.vue',
+      root: true
+    },
+    '/supplier/xx': {
       props: (route) => ({ inquiryId: route.query.inquiryId }),
       root: true
     }

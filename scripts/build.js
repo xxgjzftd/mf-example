@@ -20,12 +20,16 @@ import {
   getPkgConfig,
   getLocalModuleName,
   getAlias,
-  getExternal
+  getExternal,
+  isRoute,
+  getAliasFromPkgId,
+  getExternalFromPkgId,
+  getPkgInfoFromPkgId
 } from './utils.js'
 
 const require = createRequire(import.meta.url)
 
-const { DIST, ASSETS, VENDOR } = constants
+const { DIST, ASSETS, VENDOR, PAGES, COMPONENTS, UTILS, CONTAINER } = constants
 let meta
 let ossUrl
 const mode = argv[2]
@@ -135,11 +139,10 @@ const getVendorsExports = () => {
 
 const preVendorsExports = getVendorsExports()
 const plugins = {
-  meta (pathOrMN, isVendor = false) {
+  meta (mn) {
     return {
       name: 'vue-mfe-meta',
       generateBundle (options, bundle) {
-        const mn = isVendor ? pathOrMN : getLocalModuleName(pathOrMN)
         const info = getModuleInfo(mn)
         const fileNames = Object.keys(bundle)
         const js = fileNames.find((fileName) => bundle[fileName].isEntry)
@@ -178,6 +181,8 @@ const plugins = {
   }
 }
 
+let containerName = ''
+const built = new Set()
 const builder = {
   async vendors (mn) {
     const info = vendorsDepInfo[mn]
@@ -196,6 +201,7 @@ const builder = {
         preBindings.toString() !== curBindings.toString())
     ) {
       remove(mn)
+      const input = resolve(VENDOR)
       return vite.build(
         {
           configFile: false,
@@ -204,12 +210,20 @@ const builder = {
             sourcemap: true,
             minify: false,
             emptyOutDir: false,
-            lib: {
-              entry: resolve(VENDOR),
-              fileName: `${ASSETS}/${mn}.[hash]`,
-              formats: ['es']
-            },
+            // lib: {
+            //   entry: input,
+            //   formats: ['es']
+            // },
             rollupOptions: {
+              input,
+              output: {
+                entryFileNames: `${ASSETS}/${mn}-[hash].js`,
+                chunkFileNames: `${ASSETS}/${mn}-[hash].js`,
+                assetFileNames: `${ASSETS}/${mn}-[hash][extname]`,
+                format: 'es',
+                manualChunks: null
+              },
+              preserveEntrySignatures: 'allow-extension',
               external: info.dependencies
             }
           },
@@ -218,7 +232,7 @@ const builder = {
               name: 'vue-mfe-vendors',
               enforce: 'pre',
               resolveId (source, importer, options) {
-                if (source === resolve(VENDOR)) {
+                if (source === input) {
                   return VENDOR
                 }
               },
@@ -247,7 +261,7 @@ const builder = {
                 }
               }
             },
-            plugins.meta(mn, true)
+            plugins.meta(mn)
           ]
         }
       )
@@ -255,56 +269,66 @@ const builder = {
   },
   // utils components pages
   async lib (path) {
-    return vite.build(
-      {
-        configFile: false,
-        publicDir: false,
-        resolve: {
-          alias: getAlias(path)
-        },
-        build: {
-          sourcemap: true,
-          minify: false,
-          emptyOutDir: false,
-          rollupOptions: {
-            input: resolve(path),
-            output: {
-              entryFileNames: `${ASSETS}/[name]-[hash].js`,
-              chunkFileNames: `${ASSETS}/[name]-[hash].js`,
-              assetFileNames: `${ASSETS}/[name]-[hash][extname]`,
-              format: 'es'
-            },
-            preserveEntrySignatures: 'allow-extension',
-            external: getExternal(path)
-          }
-        },
-        plugins: [vue(), plugins.meta(path)]
-      }
+    const mn = getLocalModuleName(path)
+    return (
+      built.has(mn) ||
+      (built.add(mn),
+      vite.build(
+        {
+          configFile: false,
+          publicDir: false,
+          resolve: {
+            alias: getAlias(path)
+          },
+          build: {
+            sourcemap: true,
+            minify: false,
+            emptyOutDir: false,
+            rollupOptions: {
+              input: resolve(path),
+              output: {
+                entryFileNames: `${ASSETS}/[name]-[hash].js`,
+                chunkFileNames: `${ASSETS}/[name]-[hash].js`,
+                assetFileNames: `${ASSETS}/[name]-[hash][extname]`,
+                format: 'es'
+              },
+              preserveEntrySignatures: 'allow-extension',
+              external: getExternal(path)
+            }
+          },
+          plugins: [vue(), plugins.meta(mn)]
+        }
+      ))
     )
   },
-  async container (path) {
-    return vite.build(
-      {
-        configFile: false,
-        resolve: {
-          alias: getAlias(path)
-        },
-        build: {
-          sourcemap: true,
-          minify: false,
-          emptyOutDir: false,
-          rollupOptions: {
-            external: getExternal(path)
-          }
-        },
-        plugins: [vue(), plugins.meta(path), routes()]
-      }
+  async container () {
+    const pkgId = Object.keys(config.packages).find((pkgId) => config.packages[pkgId].type === CONTAINER)
+    const mn = getPkgInfoFromPkgId(pkgId).name
+    containerName = mn
+    return (
+      built.has(mn) ||
+      (built.add(mn),
+      vite.build(
+        {
+          configFile: false,
+          resolve: {
+            alias: getAliasFromPkgId(pkgId)
+          },
+          build: {
+            sourcemap: true,
+            minify: false,
+            emptyOutDir: false,
+            rollupOptions: {
+              external: getExternalFromPkgId(pkgId)
+            }
+          },
+          plugins: [vue(), plugins.meta(mn), routes()]
+        }
+      ))
     )
   }
 }
 
-let containerName = ''
-const built = new Set()
 const build = async ({ path, status }) => {
   const pkg = getPkgInfo(path)
   const { name, main } = pkg
@@ -312,17 +336,17 @@ const build = async ({ path, status }) => {
   if (status !== 'A') {
     remove(getLocalModuleName(path))
   }
+  if (isRoute(path)) {
+    return Promise.all([builder.lib(path), status === 'A' && builder.container()])
+  }
   switch (type) {
-    case 'pages':
+    case PAGES:
       return builder.lib(path)
-    case 'components':
-    case 'utils':
-    case 'container':
-      return (
-        built.has(name) ||
-        (built.add(name),
-        builder[type === 'container' ? ((containerName = name), type) : 'lib'](path.replace(/(?<=(.+?\/){2}).+/, main)))
-      )
+    case COMPONENTS:
+    case UTILS:
+      return builder.lib(path.replace(/(?<=(.+?\/){2}).+/, main))
+    case CONTAINER:
+      return builder.container()
     default:
       throw new Error(`${name} type 未指定`)
   }
@@ -372,6 +396,3 @@ await Promise.all(
     )
   ]
 )
-
-// TODO: refactor
-// TODO: route watch

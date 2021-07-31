@@ -53,9 +53,12 @@ const routes = (isDev = false) => {
           routes,
           (key, value) => {
             if (key === 'component') {
-              return isDev
-                ? `() => import("${value.replace(/packages\/(.+?)\/src(.+)/, '@$1$2')}")`
-                : `mfe.preload("${value.replace(/^packages/, '@vue-mfe')}")`
+              return (
+                '() => ' +
+                (isDev
+                  ? `import("${value.replace(/packages\/(.+?)\/src(.+)/, '@$1$2')}")`
+                  : `mfe.preload("${value.replace(/^packages/, '@vue-mfe')}")`)
+              )
             }
           }
         )

@@ -12,14 +12,30 @@ const constants = {
   ASSETS: 'assets',
   VENDOR: 'vendor',
   ROUTES: 'routes',
-  SCOPE: '@vue-mfe'
+  SCOPE: '@vue-mfe',
+
+  PAGES: 'pages',
+  COMPONENTS: 'components',
+  UTILS: 'utils',
+  CONTAINER: 'container'
 }
 const localModuleNameRegExp = new RegExp(`^${constants.SCOPE}/`)
+const once = (fn) => {
+  let hasRun = false
+  let res
+  return (...args) => {
+    if (!hasRun) {
+      hasRun = true
+      res = fn(...args)
+    }
+    return res
+  }
+}
 const cached = (fn) => {
   const cache = Object.create(null)
   return (str) => cache[str] || (cache[str] = fn(str))
 }
-const isRoute = cached((path) => /packages\/.+?\/src\/pages\/.+(vue|tsx)/.test(getNormalizedPath(path)))
+const isRoute = cached((path) => /packages\/.+?\/src\/pages\/.+(vue|tsx)/.test(path))
 const isLocalModule = cached((mn) => localModuleNameRegExp.test(mn))
 const getNormalizedPath = cached((path) => normalizePath(path.replace(cwd(), '')).slice(1))
 const getPkgId = cached((path) => path.replace(/^packages\/(.+?)\/.+/, '$1'))
@@ -32,7 +48,7 @@ const getLocalModuleName = cached(
     const pkg = getPkgInfo(path)
     const { name } = pkg
     const { type } = getPkgConfig(path)
-    if (type === 'pages') {
+    if (type === 'pages' || isRoute(path)) {
       return path.replace(/.+?\/.+?(?=\/)/, name)
     } else {
       return name
@@ -89,9 +105,11 @@ const stringify = (payload, replacer) => {
 export {
   constants,
   localModuleNameRegExp,
+  once,
   cached,
   isRoute,
   isLocalModule,
+  getNormalizedPath,
   getPkgId,
   getPkgInfoFromPkgId,
   getPkgInfo,

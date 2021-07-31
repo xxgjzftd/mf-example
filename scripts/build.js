@@ -189,7 +189,12 @@ const builder = {
       info.dependents.forEach((dep) => meta.modules[dep].imports[mn].forEach((binding) => curBindings.add(binding)))
       curBindings = curVendorsExports[mn] = Array.from(curBindings).sort()
     }
-    if (!preBindings || preBindings.toString() !== curBindings.toString()) {
+    const curHasStar = curBindings.find((binding) => binding === '*')
+    if (
+      !preBindings ||
+      (!(preBindings.find((binding) => binding === '*') && curHasStar) &&
+        preBindings.toString() !== curBindings.toString())
+    ) {
       remove(mn)
       return vite.build(
         {
@@ -221,17 +226,23 @@ const builder = {
                 if (id === VENDOR) {
                   const resolver = resolvers[mn.replace(/-(\w)/g, (m, p1) => p1.toUpperCase())]
                   if (resolver) {
+                    const getSideEffectsCode = (sideEffects) => (sideEffects ? `import "${mn}/${sideEffects}";\n` : '')
+                    if (curHasStar) {
+                      const { path, sideEffects } = resolver('*')
+                      return getSideEffectsCode(sideEffects) + `export * from "${mn}/${path}";`
+                    }
                     return curBindings
                       .map(
                         (binding) => {
                           const { path, sideEffects } = resolver(binding)
-                          return `${sideEffects ? `import "${mn}/${sideEffects}";\n` : ''}
-                            export { default as ${binding} } from "${mn}/${path}";`
+                          return (
+                            getSideEffectsCode(sideEffects) + `export { default as ${binding} } from "${mn}/${path}";`
+                          )
                         }
                       )
                       .join('\n')
                   } else {
-                    return `export { ${curBindings.toString()} } from "${mn}";`
+                    return curHasStar ? `export * from "${mn}";` : `export { ${curBindings.toString()} } from "${mn}";`
                   }
                 }
               }

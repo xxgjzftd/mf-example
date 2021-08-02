@@ -118,7 +118,7 @@ const getVendorsExports = () => {
       if (imports) {
         Object.keys(imports).forEach(
           (imported) => {
-            if (!isLocalModule(imported)) {
+            if (imports[imported].length && !isLocalModule(imported)) {
               setVendorsDepInfo(imported)
               const bindings = (vendorsExports[imported] = vendorsExports[imported] || new Set())
               imports[imported].forEach((binding) => bindings.add(binding))
@@ -206,6 +206,13 @@ const builder = {
         {
           configFile: false,
           publicDir: false,
+          css: {
+            preprocessorOptions: {
+              less: {
+                javascriptEnabled: true
+              }
+            }
+          },
           build: {
             sourcemap: true,
             minify: false,

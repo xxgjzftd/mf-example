@@ -20,7 +20,7 @@ const { ws, watcher, moduleGraph, listen } = await vite.createServer(
           await init
           const [imports] = parse(code)
           let ms
-          const gms = ms || (ms = new MagicString(code))
+          const gms = () => ms || (ms = new MagicString(code))
           imports.forEach(
             ({ n: mn, ss, se }) => {
               const resolver = getResolver(mn)
@@ -33,7 +33,7 @@ const { ws, watcher, moduleGraph, listen } = await vite.createServer(
                   (binding) => {
                     const { sideEffects } = resolver(binding.trim())
                     if (sideEffects) {
-                      gms.prepend(`import "${mn}/${sideEffects}";`)
+                      gms().prepend(`import "${mn}/${sideEffects}";`)
                     }
                   }
                 )

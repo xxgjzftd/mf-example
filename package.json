@@ -2,8 +2,10 @@
   "author": "xxgjzftd <xxgjzftd@gmail.com>",
   "devDependencies": {
     "@vitejs/plugin-vue": "^1.3.0",
+    "es-module-lexer": "^0.7.1",
     "execa": "^5.1.1",
     "fast-glob": "^3.2.7",
+    "magic-string": "^0.25.7",
     "prettier": "npm:@xxgjzftd/prettier",
     "typescript": "^4.3.5",
     "vite": "^2.4.4",

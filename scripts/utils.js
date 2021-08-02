@@ -3,6 +3,8 @@ import { createRequire } from 'module'
 import { cwd } from 'process'
 
 import { normalizePath } from 'vite'
+
+import resolvers from './resolvers/index.js'
 import config from '../mfe.config.js'
 
 const require = createRequire(import.meta.url)
@@ -37,6 +39,7 @@ const cached = (fn) => {
 }
 const isRoute = cached((path) => /packages\/.+?\/src\/pages\/.+(vue|tsx)/.test(path))
 const isLocalModule = cached((mn) => localModuleNameRegExp.test(mn))
+const getResolver = cached((mn) => mn && resolvers[mn.replace(/-(\w)/g, (m, p1) => p1.toUpperCase())])
 const getNormalizedPath = cached((path) => normalizePath(path.replace(cwd(), '')).slice(1))
 const getPkgId = cached((path) => path.replace(/^packages\/(.+?)\/.+/, '$1'))
 const getPkgInfoFromPkgId = cached((pkgId) => require(resolve(`packages/${pkgId}/package.json`)))
@@ -109,6 +112,7 @@ export {
   cached,
   isRoute,
   isLocalModule,
+  getResolver,
   getNormalizedPath,
   getPkgId,
   getPkgInfoFromPkgId,

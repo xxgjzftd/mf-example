@@ -10,7 +10,6 @@ import axios from 'axios'
 import fg from 'fast-glob'
 
 import { routes } from './plugins.js'
-import resolvers from './resolvers/index.js'
 import config from '../mfe.config.js'
 import {
   constants,
@@ -24,7 +23,8 @@ import {
   isRoute,
   getAliasFromPkgId,
   getExternalFromPkgId,
-  getPkgInfoFromPkgId
+  getPkgInfoFromPkgId,
+  getResolver
 } from './utils.js'
 
 const require = createRequire(import.meta.url)
@@ -210,10 +210,6 @@ const builder = {
             sourcemap: true,
             minify: false,
             emptyOutDir: false,
-            // lib: {
-            //   entry: input,
-            //   formats: ['es']
-            // },
             rollupOptions: {
               input,
               output: {
@@ -238,7 +234,7 @@ const builder = {
               },
               load (id) {
                 if (id === VENDOR) {
-                  const resolver = resolvers[mn.replace(/-(\w)/g, (m, p1) => p1.toUpperCase())]
+                  const resolver = getResolver(mn)
                   if (resolver) {
                     const getSideEffectsCode = (sideEffects) => (sideEffects ? `import "${mn}/${sideEffects}";\n` : '')
                     if (curHasStar) {

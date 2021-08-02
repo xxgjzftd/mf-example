@@ -25,7 +25,10 @@ const { ws, watcher, moduleGraph, listen } = await vite.createServer(
             ({ n: mn, ss, se }) => {
               const resolver = getResolver(mn)
               if (resolver) {
-                const matches = code.slice(ss, se).match(/\{(.+)\}/)
+                const matches = code
+                  .slice(ss, se)
+                  .replace(/\n/g, '')
+                  .match(/\{(.+)\}/)
                 if (!matches) {
                   throw new Error(`为性能考虑，限制${mn}只能局部导入。`)
                 }
@@ -48,7 +51,22 @@ const { ws, watcher, moduleGraph, listen } = await vite.createServer(
           }
         }
       }
-    ]
+    ],
+    server: {
+      proxy: {
+        '^/enoquote': 'http://47.97.115.166:18192'
+      }
+    },
+    css: {
+      preprocessorOptions: {
+        less: {
+          modifyVars: {
+            '@primary-color': '#0d8d8d'
+          },
+          javascriptEnabled: true
+        }
+      }
+    }
   }
 )
 

@@ -18,7 +18,7 @@ const routes = (isDev = false) => {
         const pages = await fg('packages/*/src/pages/**/*.{vue,tsx}')
         const routeConfigs = pages.map(
           (path) => {
-            const raw = path.replace(/packages\/(.+?)\/src\/pages(\/)(.*?)(\/index)?\.(vue|tsx)/, '/$1$2$3')
+            const raw = path.replace(/packages\/(.+?)\/src\/pages(?=\/)(.*?)(\/index)?\.(vue|tsx)/, '/$1$2')
             const id = raw.replace(/(?<=\/)_/, ':')
             return {
               id,

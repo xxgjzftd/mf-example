@@ -5,6 +5,7 @@
     "es-module-lexer": "^0.7.1",
     "execa": "^5.1.1",
     "fast-glob": "^3.2.7",
+    "less": "^4.1.1",
     "magic-string": "^0.25.7",
     "prettier": "npm:@xxgjzftd/prettier",
     "typescript": "^4.3.5",

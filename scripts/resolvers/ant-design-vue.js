@@ -149,6 +149,6 @@ export default (component) => {
   }
   return {
     path: `es/${map.dir}`,
-    sideEffects: `es/${map.dir}/style/css`
+    sideEffects: `es/${map.dir}/style`
   }
 }

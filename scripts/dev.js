@@ -8,7 +8,6 @@ import { constants, isRoute, getResolver, getNormalizedPath, getDevAlias } from 
 
 const { ws, watcher, moduleGraph, listen } = await vite.createServer(
   {
-    configFile: false,
     resolve: {
       alias: getDevAlias()
     },
@@ -51,22 +50,7 @@ const { ws, watcher, moduleGraph, listen } = await vite.createServer(
           }
         }
       }
-    ],
-    server: {
-      proxy: {
-        '^/enoquote': 'http://47.97.115.166:18192'
-      }
-    },
-    css: {
-      preprocessorOptions: {
-        less: {
-          modifyVars: {
-            '@primary-color': '#0d8d8d'
-          },
-          javascriptEnabled: true
-        }
-      }
-    }
+    ]
   }
 )
 

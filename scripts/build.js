@@ -204,25 +204,14 @@ const builder = {
       const input = resolve(VENDOR)
       return vite.build(
         {
-          configFile: false,
           publicDir: false,
-          css: {
-            preprocessorOptions: {
-              less: {
-                javascriptEnabled: true
-              }
-            }
-          },
           build: {
-            sourcemap: true,
-            minify: false,
-            emptyOutDir: false,
             rollupOptions: {
               input,
               output: {
-                entryFileNames: `${ASSETS}/${mn}-[hash].js`,
-                chunkFileNames: `${ASSETS}/${mn}-[hash].js`,
-                assetFileNames: `${ASSETS}/${mn}-[hash][extname]`,
+                entryFileNames: `${ASSETS}/${mn}.[hash].js`,
+                chunkFileNames: `${ASSETS}/${mn}.[hash].js`,
+                assetFileNames: `${ASSETS}/${mn}.[hash][extname]`,
                 format: 'es',
                 manualChunks: null
               },
@@ -278,21 +267,17 @@ const builder = {
       (built.add(mn),
       vite.build(
         {
-          configFile: false,
           publicDir: false,
           resolve: {
             alias: getAlias(path)
           },
           build: {
-            sourcemap: true,
-            minify: false,
-            emptyOutDir: false,
             rollupOptions: {
               input: resolve(path),
               output: {
-                entryFileNames: `${ASSETS}/[name]-[hash].js`,
-                chunkFileNames: `${ASSETS}/[name]-[hash].js`,
-                assetFileNames: `${ASSETS}/[name]-[hash][extname]`,
+                entryFileNames: `${ASSETS}/[name].[hash].js`,
+                chunkFileNames: `${ASSETS}/[name].[hash].js`,
+                assetFileNames: `${ASSETS}/[name].[hash][extname]`,
                 format: 'es'
               },
               preserveEntrySignatures: 'allow-extension',
@@ -313,14 +298,10 @@ const builder = {
       (built.add(mn),
       vite.build(
         {
-          configFile: false,
           resolve: {
             alias: getAliasFromPkgId(pkgId)
           },
           build: {
-            sourcemap: true,
-            minify: false,
-            emptyOutDir: false,
             rollupOptions: {
               external: getExternalFromPkgId(pkgId)
             }

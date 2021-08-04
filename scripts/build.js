@@ -17,6 +17,7 @@ import {
   isLocalModule,
   getPkgInfo,
   getPkgConfig,
+  getVendorPkgInfo,
   getLocalModuleName,
   getAlias,
   getExternal,
@@ -97,8 +98,8 @@ const vendorToRefCountMap = {}
 const setVendorToRefCountMap = (vendors) => {
   vendors.forEach(
     (vendor) => {
-      vendorToRefCountMap[dep] = (vendorToRefCountMap[dep] || 0) + 1
-      const { dependencies } = require(`${vendor}/package.json`)
+      vendorToRefCountMap[vendor] = (vendorToRefCountMap[vendor] || 0) + 1
+      const { dependencies } = getVendorPkgInfo(vendor)
       if (dependencies) {
         setVendorToRefCountMap(Object.keys(dependencies))
       }
@@ -224,7 +225,10 @@ const builder = {
     if (info.dependents) {
       await Promise.all(info.dependents.map((dep) => builder.vendors(dep)))
       curBindings = new Set(curBindings)
-      info.dependents.forEach((dep) => meta.modules[dep].imports[mn].forEach((binding) => curBindings.add(binding)))
+      info.dependents.forEach(
+        (dep) =>
+          meta.modules[dep].imports[mn] && meta.modules[dep].imports[mn].forEach((binding) => curBindings.add(binding))
+      )
       curBindings = curVendorsExports[mn] = Array.from(curBindings).sort()
     }
     const curHasStar = curBindings.find((binding) => binding === '*')

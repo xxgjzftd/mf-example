@@ -46,6 +46,17 @@ const getPkgInfoFromPkgId = cached((pkgId) => require(resolve(`packages/${pkgId}
 const getPkgInfo = cached((path) => getPkgInfoFromPkgId(getPkgId(path)))
 const getPkgConfigFromPkgId = cached((pkgId) => config.packages[pkgId])
 const getPkgConfig = cached((path) => getPkgConfigFromPkgId(getPkgId(path)))
+const getVendorPkgInfo = cached(
+  (mn) => {
+    let pkgInfo
+    try {
+      pkgInfo = require(`${mn}/package.json`)
+    } catch (error) {
+      pkgInfo = require(normalizePath(require.resolve(mn)).replace(new RegExp(`(?<=${mn}).+`), '/package.json'))
+    }
+    return pkgInfo
+  }
+)
 const getLocalModuleName = cached(
   (path) => {
     const pkg = getPkgInfo(path)
@@ -119,6 +130,7 @@ export {
   getPkgInfo,
   getPkgConfigFromPkgId,
   getPkgConfig,
+  getVendorPkgInfo,
   getLocalModuleName,
   getAliasKeyFromPkgId,
   getAliasKey,

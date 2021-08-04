@@ -96,13 +96,13 @@ const remove = (mn, isModify = true) => {
 
 const getModuleInfo = cached((mn) => (meta.modules[mn] = meta.modules[mn] || {}))
 
-const getAllDepsOfVendor = (vendor, deps = new Set()) => {
+const getAllDepsOfVendor = (vendor, vendors, deps = new Set()) => {
   const { dependencies } = getVendorPkgInfo(vendor)
   if (dependencies) {
     Object.keys(dependencies).forEach(
       (dep) => {
         deps.add(dep)
-        getAllDepsOfVendor(dep, deps)
+        !vendors.has(dep) && getAllDepsOfVendor(dep, vendors, deps)
       }
     )
   }
@@ -135,7 +135,7 @@ const getVendorsExports = (isPre = false) => {
   if (!isPre) {
     vendors.forEach(
       (vendor) => {
-        getAllDepsOfVendor(vendor).forEach(
+        getAllDepsOfVendor(vendor, vendors).forEach(
           (dep) => {
             vendorToRefCountMap[dep] = (vendorToRefCountMap[dep] || 0) + 1
           }

@@ -93,19 +93,23 @@ const remove = (mn, isModify = true) => {
     )
   }
 }
+
 const getModuleInfo = cached((mn) => (meta.modules[mn] = meta.modules[mn] || {}))
-const vendorToRefCountMap = {}
-const setVendorToRefCountMap = (vendors) => {
-  vendors.forEach(
-    (vendor) => {
-      vendorToRefCountMap[vendor] = (vendorToRefCountMap[vendor] || 0) + 1
-      const { dependencies } = getVendorPkgInfo(vendor)
-      if (dependencies) {
-        setVendorToRefCountMap(Object.keys(dependencies))
+
+const getAllDepsOfVendor = (vendor, deps = new Set()) => {
+  const { dependencies } = getVendorPkgInfo(vendor)
+  if (dependencies) {
+    Object.keys(dependencies).forEach(
+      (dep) => {
+        deps.add(dep)
+        getAllDepsOfVendor(dep, deps)
       }
-    }
-  )
+    )
+  }
+  return deps
 }
+
+const vendorToRefCountMap = {}
 const vendorsDepInfo = {}
 
 const getVendorsExports = (isPre = false) => {
@@ -129,7 +133,15 @@ const getVendorsExports = (isPre = false) => {
   )
   let vendors = new Set(Object.keys(vendorsExports))
   if (!isPre) {
-    setVendorToRefCountMap(vendors)
+    vendors.forEach(
+      (vendor) => {
+        getAllDepsOfVendor(vendor).forEach(
+          (dep) => {
+            vendorToRefCountMap[dep] = (vendorToRefCountMap[dep] || 0) + 1
+          }
+        )
+      }
+    )
     Object.keys(vendorToRefCountMap).forEach(
       (vendor) => {
         if (vendorToRefCountMap[vendor] > 1) {

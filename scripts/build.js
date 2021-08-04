@@ -71,10 +71,11 @@ if (meta.hash) {
 !sources.length && exit()
 meta.hash = execa.sync('git', ['rev-parse', '--short', 'HEAD']).stdout
 
-const remove = (mn) => {
+const remove = (mn, isModify = true) => {
   const info = meta.modules[mn]
   const removals = []
   if (info) {
+    !isModify && Reflect.deleteProperty(meta.modules, mn)
     info.js && removals.push(info.js)
     info.css && removals.push(info.css)
   }
@@ -92,52 +93,84 @@ const remove = (mn) => {
   }
 }
 const getModuleInfo = cached((mn) => (meta.modules[mn] = meta.modules[mn] || {}))
-const vendorsDepInfo = {}
-const setVendorsDepInfo = cached(
-  (mn) => {
-    const info = (vendorsDepInfo[mn] = vendorsDepInfo[mn] || {})
-    const { peerDependencies } = require(`${mn}/package.json`)
-    if (peerDependencies) {
-      info.dependencies = Object.keys(peerDependencies)
-      info.dependencies.forEach(
-        (dep) => {
-          const depInfo = (vendorsDepInfo[dep] = vendorsDepInfo[dep] || {})
-          depInfo.dependents = depInfo.dependents || []
-          depInfo.dependents.push(mn)
-        }
-      )
-    }
-    return true
-  }
-)
-const getVendorsExports = () => {
-  const vendorsExports = {}
-  Object.keys(meta.modules).forEach(
-    (mn) => {
-      const { imports } = meta.modules[mn]
-      if (imports) {
-        Object.keys(imports).forEach(
-          (imported) => {
-            if (imports[imported].length && !isLocalModule(imported)) {
-              setVendorsDepInfo(imported)
-              const bindings = (vendorsExports[imported] = vendorsExports[imported] || new Set())
-              imports[imported].forEach((binding) => bindings.add(binding))
-            }
-          }
-        )
+const vendorToRefCountMap = {}
+const setVendorToRefCountMap = (vendors) => {
+  vendors.forEach(
+    (vendor) => {
+      vendorToRefCountMap[dep] = (vendorToRefCountMap[dep] || 0) + 1
+      const { dependencies } = require(`${vendor}/package.json`)
+      if (dependencies) {
+        setVendorToRefCountMap(Object.keys(dependencies))
       }
     }
   )
-  Object.keys(vendorsExports).forEach(
+}
+const vendorsDepInfo = {}
+
+const getVendorsExports = (isPre = false) => {
+  const vendorsExports = {}
+  Object.keys(meta.modules).forEach(
+    (mn) => {
+      if (isPre || isLocalModule(mn)) {
+        const { imports } = meta.modules[mn]
+        if (imports) {
+          Object.keys(imports).forEach(
+            (imported) => {
+              if (imports[imported].length && !isLocalModule(imported)) {
+                const bindings = (vendorsExports[imported] = vendorsExports[imported] || new Set())
+                imports[imported].forEach((binding) => bindings.add(binding))
+              }
+            }
+          )
+        }
+      }
+    }
+  )
+  let vendors = new Set(Object.keys(vendorsExports))
+  if (!isPre) {
+    setVendorToRefCountMap(vendors)
+    Object.keys(vendorToRefCountMap).forEach(
+      (vendor) => {
+        if (vendorToRefCountMap[vendor] > 1) {
+          vendors.add(vendor)
+        }
+      }
+    )
+    vendors.forEach(
+      (vendor) => {
+        const info = (vendorsDepInfo[vendor] = vendorsDepInfo[vendor] || {})
+        const { peerDependencies, dependencies } = require(`${vendor}/package.json`)
+        info.dependencies = []
+        if (peerDependencies) {
+          info.dependencies = Object.keys(peerDependencies)
+        }
+        if (dependencies) {
+          Object.keys(dependencies).forEach((dep) => vendors.has(dep) && info.dependencies.push(dep))
+        }
+        info.dependencies.forEach(
+          (dep) => {
+            const depInfo = (vendorsDepInfo[dep] = vendorsDepInfo[dep] || {})
+            depInfo.dependents = depInfo.dependents || []
+            depInfo.dependents.push(vendor)
+          }
+        )
+      }
+    )
+  }
+  vendors.forEach(
     (vendor) => {
-      vendorsExports[vendor] = Array.from(vendorsExports[vendor])
-      vendorsExports[vendor].sort()
+      if (vendorsExports[vendor]) {
+        vendorsExports[vendor] = Array.from(vendorsExports[vendor])
+        vendorsExports[vendor].sort()
+      } else {
+        vendorsExports[vendor] = []
+      }
     }
   )
   return vendorsExports
 }
 
-const preVendorsExports = getVendorsExports()
+const preVendorsExports = getVendorsExports(true)
 const plugins = {
   meta (mn) {
     return {
@@ -318,7 +351,7 @@ const build = async ({ path, status }) => {
   const { name, main } = pkg
   const { type } = getPkgConfig(path)
   if (status !== 'A') {
-    remove(getLocalModuleName(path))
+    remove(getLocalModuleName(path), !((isRoute(path) || type === PAGES) && status === 'D'))
   }
   if (isRoute(path)) {
     return Promise.all([builder.lib(path), status === 'A' && builder.container()])
@@ -342,14 +375,14 @@ const curVendorsExports = getVendorsExports()
 Object.keys(preVendorsExports).forEach(
   (vendor) => {
     if (!(vendor in curVendorsExports)) {
-      remove(vendor)
+      remove(vendor, false)
     }
   }
 )
 
 await Promise.all(
   Object.keys(curVendorsExports)
-    .filter((vendor) => !vendorsDepInfo[vendor].dependencies)
+    .filter((vendor) => !vendorsDepInfo[vendor].dependencies.length)
     .map((vendor) => builder.vendors(vendor))
 )
 await Promise.all(

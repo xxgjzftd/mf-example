@@ -72,11 +72,11 @@ if (meta.hash) {
 !sources.length && exit()
 meta.hash = execa.sync('git', ['rev-parse', '--short', 'HEAD']).stdout
 
-const remove = (mn, isModify = true) => {
+const remove = (mn) => {
   const info = meta.modules[mn]
   const removals = []
   if (info) {
-    !isModify && Reflect.deleteProperty(meta.modules, mn)
+    Reflect.deleteProperty(meta.modules, mn)
     info.js && removals.push(info.js)
     info.css && removals.push(info.css)
   }
@@ -230,84 +230,90 @@ const plugins = {
 let containerName = ''
 const built = new Set()
 const builder = {
-  async vendors (mn) {
-    const info = vendorsDepInfo[mn]
-    const preBindings = preVendorsExports[mn]
-    let curBindings = curVendorsExports[mn]
-    if (info.dependents) {
-      await Promise.all(info.dependents.map((dep) => builder.vendors(dep)))
-      curBindings = new Set(curBindings)
-      info.dependents.forEach(
-        (dep) =>
-          meta.modules[dep].imports[mn] && meta.modules[dep].imports[mn].forEach((binding) => curBindings.add(binding))
-      )
-      curBindings = curVendorsExports[mn] = Array.from(curBindings).sort()
-    }
-    const curHasStar = curBindings.find((binding) => binding === '*')
-    if (
-      !preBindings ||
-      (!(preBindings.find((binding) => binding === '*') && curHasStar) &&
-        preBindings.toString() !== curBindings.toString())
-    ) {
-      remove(mn)
-      const input = resolve(VENDOR)
-      return vite.build(
-        {
-          publicDir: false,
-          build: {
-            rollupOptions: {
-              input,
-              output: {
-                entryFileNames: `${ASSETS}/${mn}.[hash].js`,
-                chunkFileNames: `${ASSETS}/${mn}.[hash].js`,
-                assetFileNames: `${ASSETS}/${mn}.[hash][extname]`,
-                format: 'es',
-                manualChunks: null
-              },
-              preserveEntrySignatures: 'allow-extension',
-              external: info.dependencies
-            }
-          },
-          plugins: [
-            {
-              name: 'vue-mfe-vendors',
-              enforce: 'pre',
-              resolveId (source, importer, options) {
-                if (source === input) {
-                  return VENDOR
-                }
-              },
-              load (id) {
-                if (id === VENDOR) {
-                  const resolver = getResolver(mn)
-                  if (resolver) {
-                    const getSideEffectsCode = (sideEffects) => (sideEffects ? `import "${mn}/${sideEffects}";\n` : '')
-                    if (curHasStar) {
-                      const { path, sideEffects } = resolver('*')
-                      return getSideEffectsCode(sideEffects) + `export * from "${mn}/${path}";`
-                    }
-                    return curBindings
-                      .map(
-                        (binding) => {
-                          const { path, sideEffects } = resolver(binding)
-                          return (
-                            getSideEffectsCode(sideEffects) + `export { default as ${binding} } from "${mn}/${path}";`
-                          )
-                        }
-                      )
-                      .join('\n')
-                  } else {
-                    return curHasStar ? `export * from "${mn}";` : `export { ${curBindings.toString()} } from "${mn}";`
-                  }
-                }
+  vendors: cached(
+    async (mn) => {
+      const info = vendorsDepInfo[mn]
+      const preBindings = preVendorsExports[mn]
+      let curBindings = curVendorsExports[mn]
+      if (info.dependents) {
+        await Promise.all(info.dependents.map((dep) => builder.vendors(dep)))
+        curBindings = new Set(curBindings)
+        info.dependents.forEach(
+          (dep) =>
+            meta.modules[dep].imports[mn] &&
+            meta.modules[dep].imports[mn].forEach((binding) => curBindings.add(binding))
+        )
+        curBindings = curVendorsExports[mn] = Array.from(curBindings).sort()
+      }
+      const curHasStar = curBindings.find((binding) => binding === '*')
+      if (
+        !preBindings ||
+        (!(preBindings.find((binding) => binding === '*') && curHasStar) &&
+          preBindings.toString() !== curBindings.toString())
+      ) {
+        remove(mn)
+        const input = resolve(VENDOR)
+        return vite.build(
+          {
+            publicDir: false,
+            build: {
+              rollupOptions: {
+                input,
+                output: {
+                  entryFileNames: `${ASSETS}/${mn}.[hash].js`,
+                  chunkFileNames: `${ASSETS}/${mn}.[hash].js`,
+                  assetFileNames: `${ASSETS}/${mn}.[hash][extname]`,
+                  format: 'es',
+                  manualChunks: null
+                },
+                preserveEntrySignatures: 'allow-extension',
+                external: info.dependencies
               }
             },
-            plugins.meta(mn)
-          ]
-        }
-      )
+            plugins: [
+              {
+                name: 'vue-mfe-vendors',
+                enforce: 'pre',
+                resolveId (source, importer, options) {
+                  if (source === input) {
+                    return VENDOR
+                  }
+                },
+                load (id) {
+                  if (id === VENDOR) {
+                    const resolver = getResolver(mn)
+                    if (resolver) {
+                      const getSideEffectsCode = (sideEffects) =>
+                        sideEffects ? `import "${mn}/${sideEffects}";\n` : ''
+                      if (curHasStar) {
+                        const { path, sideEffects } = resolver('*')
+                        return getSideEffectsCode(sideEffects) + `export * from "${mn}/${path}";`
+                      }
+                      return curBindings
+                        .map(
+                          (binding) => {
+                            const { path, sideEffects } = resolver(binding)
+                            return (
+                              getSideEffectsCode(sideEffects) + `export { default as ${binding} } from "${mn}/${path}";`
+                            )
+                          }
+                        )
+                        .join('\n')
+                    } else {
+                      return curHasStar
+                        ? `export * from "${mn}";`
+                        : `export { ${curBindings.toString()} } from "${mn}";`
+                    }
+                  }
+                }
+              },
+              plugins.meta(mn)
+            ]
+          }
+        )
+      }
     }
-  },
+  ),
   // utils components pages
   async lib (path) {
     const mn = getLocalModuleName(path)
@@ -367,7 +373,7 @@ const build = async ({ path, status }) => {
   const { name, main } = pkg
   const { type } = getPkgConfig(path)
   if (status !== 'A') {
-    remove(getLocalModuleName(path), !((isRoute(path) || type === PAGES) && status === 'D'))
+    remove(getLocalModuleName(path))
   }
   if (isRoute(path)) {
     return Promise.all([builder.lib(path), status === 'A' && builder.container()])
@@ -391,7 +397,7 @@ const curVendorsExports = getVendorsExports()
 Object.keys(preVendorsExports).forEach(
   (vendor) => {
     if (!(vendor in curVendorsExports)) {
-      remove(vendor, false)
+      remove(vendor)
     }
   }
 )

@@ -9,6 +9,7 @@
     "type": "container"
   },
   "dependencies": {
+    "@ant-design/icons-vue": "^6.0.1",
     "moment": "^2.29.1",
     "vue": "3.2.0-beta.6",
     "vue-router": "4"

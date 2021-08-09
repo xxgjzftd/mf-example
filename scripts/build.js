@@ -33,7 +33,7 @@ const require = createRequire(import.meta.url)
 const { DIST, ASSETS, VENDOR, PAGES, COMPONENTS, UTILS, CONTAINER } = constants
 let meta
 let base
-const mode = argv[2] || 'local'
+const mode = argv[2]
 try {
   switch (mode) {
     case 'qa':

@@ -44,6 +44,6 @@
           link.addEventListener("error", rej);
         });
       }
-    })).then(() => import(mn));
+    })).then(() => importShim(mn));
   };
 })();

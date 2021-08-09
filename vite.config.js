@@ -14,6 +14,16 @@ export default ({ command, mode }) => {
       }
     }
   }
+  switch (mode) {
+    case 'qa':
+      config.base = 'https://xx.com/'
+      break
+    case 'prod':
+      config.base = 'https://yy.com/'
+      break
+    default:
+      break
+  }
   if (command === 'serve') {
     config.server = {
       proxy: {

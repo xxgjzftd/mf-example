@@ -32,14 +32,14 @@ const require = createRequire(import.meta.url)
 
 const { DIST, ASSETS, VENDOR, PAGES, COMPONENTS, UTILS, CONTAINER } = constants
 let meta
-let ossUrl
-const mode = argv[2]
+let base
+const mode = argv[2] || 'local'
 try {
   switch (mode) {
     case 'qa':
     case 'prod':
-      ossUrl = config.oss[mode]
-      meta = await axios.get(`${ossUrl}meta.json`).then((res) => res.data)
+      base = await vite.resolveConfig({ mode }, 'build').then((res) => res.base)
+      meta = await axios.get(`${base}meta.json`).then((res) => res.data)
       break
     default:
       meta = require(resolve(`${DIST}/meta.json`))
@@ -84,7 +84,7 @@ const remove = (mn) => {
     removals.forEach(
       (path) =>
         rm(
-          resolve(DIST, path.slice(1)),
+          resolve(DIST, path),
           {
             force: true,
             recursive: true
@@ -193,8 +193,8 @@ const plugins = {
         const fileNames = Object.keys(bundle)
         const js = fileNames.find((fileName) => bundle[fileName].isEntry)
         const css = fileNames.find((fileName) => fileName.endsWith('.css'))
-        info.js = `/${js}`
-        css && (info.css = `/${css}`)
+        info.js = js
+        css && (info.css = css)
         const { importedBindings } = bundle[js]
         info.imports = importedBindings
         Object.keys(importedBindings).forEach(
@@ -255,6 +255,7 @@ const builder = {
         const input = resolve(VENDOR)
         return vite.build(
           {
+            mode,
             publicDir: false,
             build: {
               rollupOptions: {
@@ -322,6 +323,7 @@ const builder = {
       (built.add(mn),
       vite.build(
         {
+          mode,
           publicDir: false,
           resolve: {
             alias: getAlias(path)
@@ -353,6 +355,7 @@ const builder = {
       (built.add(mn),
       vite.build(
         {
+          mode,
           resolve: {
             alias: getAliasFromPkgId(pkgId)
           },
@@ -412,16 +415,17 @@ await Promise.all(
     writeFile(resolve(`${DIST}/meta.json`), JSON.stringify(meta)),
     (built.has(containerName) || !mode
       ? readFile(resolve(`${DIST}/index.html`), { encoding: 'utf8' })
-      : axios.get(`${ossUrl}index.html`).then((res) => res.data)
+      : axios.get(`${base}index.html`).then((res) => res.data)
     ).then(
       (html) => {
         let importmap = { imports: {} }
         const imports = importmap.imports
-        Object.keys(meta.modules).forEach((mn) => (imports[mn] = meta.modules[mn].js))
+        Object.keys(meta.modules).forEach((mn) => (imports[mn] = base + meta.modules[mn].js))
         importmap = `<script type="importmap">${JSON.stringify(importmap)}</script>`
-        let modules = `<script>window.mfe = window.mfe || {};window.mfe.modules = ${JSON.stringify(
-          meta.modules
-        )}</script>`
+        let modules =
+          `<script>window.mfe = window.mfe || {};` +
+          `window.mfe.base = '${base}';` +
+          `window.mfe.modules = ${JSON.stringify(meta.modules)}</script>`
         return writeFile(
           resolve(`${DIST}/index.html`),
           html.replace(

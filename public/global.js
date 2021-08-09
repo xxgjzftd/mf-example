@@ -24,9 +24,10 @@
       if (dep in seen)
         return;
       seen[dep] = true;
+      const href = window.mfe.base + dep
       const isCss = dep.endsWith(".css");
       const cssSelector = isCss ? '[rel="stylesheet"]' : "";
-      if (document.querySelector(`link[href="${dep}"]${cssSelector}`)) {
+      if (document.querySelector(`link[href="${href}"]${cssSelector}`)) {
         return;
       }
       const link = document.createElement("link");
@@ -35,7 +36,7 @@
         link.as = "script";
         link.crossOrigin = "";
       }
-      link.href = dep;
+      link.href = href;
       document.head.appendChild(link);
       if (isCss) {
         return new Promise((res, rej) => {

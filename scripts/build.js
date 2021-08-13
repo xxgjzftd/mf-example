@@ -236,22 +236,26 @@ const plugins = {
               imports.forEach(
                 ({ n: mn, ss, se }) => {
                   if (mn === imported) {
-                    const bindingToName = {}
-                    code
-                      .slice(ss, se)
-                      .match(/(?<=^import).+?(?=from)/)[0]
-                      .trim()
-                      .replace(/(^{|}$)/g, '')
-                      .split(',')
-                      .map((s) => s.trim().split('as'))
-                      .forEach(([binding, name]) => (bindingToName[binding] = name || binding))
-                    const content = importedBindings[imported].length
-                      ? `import { ${importedBindings[imported]
-                          .map(
-                            (binding) => `${imported.replaceAll('/', '$xx')}$xx${binding} as ${bindingToName[binding]}`
-                          )
-                          .join(',')} } from "${vendor}"`
-                      : `import "${vendor}"`
+                    const bindings = importedBindings[imported]
+                    let content = ''
+                    if (bindings.length) {
+                      const bindingToName = {}
+                      code
+                        .slice(ss, se)
+                        .match(/(?<=^import).+?(?=from)/)[0]
+                        .trim()
+                        .replace(/(^{|}$)/g, '')
+                        .split(',')
+                        .map((s) => s.trim().split('as'))
+                        .forEach(([binding, name]) => (bindingToName[binding] = name || binding))
+                      content = `import { ${bindings
+                        .map(
+                          (binding) => `${imported.replaceAll('/', '$xx')}$xx${binding} as ${bindingToName[binding]}`
+                        )
+                        .join(',')} } from "${vendor}"`
+                    } else {
+                      content = `import "${vendor}"`
+                    }
                     ms.overwrite(ss, se, content)
                   }
                 }

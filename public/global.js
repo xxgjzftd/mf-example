@@ -2,21 +2,34 @@
   const relList = document.createElement("link").relList;
   const scriptRel = relList && relList.supports && relList.supports("modulepreload") ? "modulepreload" : "preload";
   const seen = {};
-  
-  function getDeps (mn) {
-    let deps = [];
-    const info = window.mfe.modules[mn];
-    deps.push(info.js);
-    info.css && deps.push(info.css);
-    if (info.imports) {
-      Object.keys(info.imports).forEach(
-        mn => {
-          deps = deps.concat(getDeps(mn));
-        }
-      )
+
+  const cached = (fn) => {
+    const cache = Object.create(null);
+    return (str) => cache[str] || (cache[str] = fn(str));
+  };
+  const normalizeModuleName = cached(
+    (mn) => {
+      const index = mn.indexOf('/', mn[0] === '@' ? mn.indexOf('/') + 1 : 0);
+      return ~index ? mn.slice(0, index) : mn;
     }
-    return deps;
-  }
+  );
+  const getDeps = cached(
+    (mn) => {
+      let deps = [];
+      const info = window.mfe.modules[normalizeModuleName(mn)] || window.mfe.modules[normalizeModuleName(mn)];
+      deps.push(info.js);
+      info.css && deps.push(info.css);
+      if (info.imports) {
+        Object.keys(info.imports).forEach(
+          mn => {
+            deps = deps.concat(getDeps(mn));
+          }
+        )
+      }
+      return deps;
+    }
+  );
+
   window.mfe = window.mfe || {};
   window.mfe.preload = function preload (mn) {
     const deps = getDeps(mn)

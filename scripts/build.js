@@ -32,7 +32,7 @@ import {
 
 const require = createRequire(import.meta.url)
 
-const { DIST, ASSETS, VENDOR, PAGES, COMPONENTS, UTILS, CONTAINER } = constants
+const { DIST, ASSETS, VENDOR, PAGES, SEP, COMPONENTS, UTILS, CONTAINER } = constants
 let meta
 let base = '/'
 const mode = argv[2]
@@ -240,19 +240,34 @@ const plugins = {
                     let content = ''
                     if (bindings.length) {
                       const bindingToName = {}
-                      code
+                      const d = code
                         .slice(ss, se)
                         .match(/(?<=^import).+?(?=from)/)[0]
                         .trim()
-                        .replace(/(^{|}$)/g, '')
-                        .split(',')
-                        .map((s) => s.trim().split('as'))
-                        .forEach(([binding, name]) => (bindingToName[binding] = name || binding))
-                      content = `import { ${bindings
-                        .map(
-                          (binding) => `${imported.replaceAll('/', '$xx')}$xx${binding} as ${bindingToName[binding]}`
-                        )
-                        .join(',')} } from "${vendor}"`
+                      const m = d.match(/^{(.+)}$/)
+                      if (m) {
+                        m[1]
+                          .split(',')
+                          .map(
+                            (s) =>
+                              s
+                                .trim()
+                                .split('as')
+                                .map((v) => v.trim())
+                          )
+                          .forEach(([binding, name]) => (bindingToName[binding] = name || binding))
+                      } else {
+                        bindingToName.default = d
+                      }
+
+                      content =
+                        `import { ` +
+                        bindings
+                          .map(
+                            (binding) => `${imported}/${binding}`.replace(/\W/g, SEP) + ` as ${bindingToName[binding]}`
+                          )
+                          .join(',') +
+                        `} from "${vendor}"`
                     } else {
                       content = `import "${vendor}"`
                     }
@@ -262,6 +277,10 @@ const plugins = {
               )
             }
           )
+          return {
+            code: ms.toString(),
+            map: ms.generateMap({ hires: true })
+          }
         }
       },
       generateBundle (options, bundle) {
@@ -397,7 +416,7 @@ const builder = {
                             const path = sub.slice(0, index)
                             const binding = sub.slice(index + 1)
                             return binding
-                              ? `export { ${binding} as ${sub.replaceAll('/', '$xx')} } from "${path}";`
+                              ? `export { ${binding} as ` + `${sub.replace(/\W/g, SEP)} } from "${path}";`
                               : `import "${path}";`
                           }
                         )

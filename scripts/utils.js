@@ -14,7 +14,10 @@ const constants = {
   ASSETS: 'assets',
   VENDOR: 'vendor',
   ROUTES: 'routes',
+
   SCOPE: '@vue-mfe',
+
+  SEP: '$xx',
 
   PAGES: 'pages',
   COMPONENTS: 'components',

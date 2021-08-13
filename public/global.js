@@ -16,7 +16,7 @@
   const getDeps = cached(
     (mn) => {
       let deps = [];
-      const info = window.mfe.modules[normalizeModuleName(mn)] || window.mfe.modules[normalizeModuleName(mn)];
+      const info = window.mfe.modules[mn] || window.mfe.modules[normalizeModuleName(mn)];
       deps.push(info.js);
       info.css && deps.push(info.css);
       if (info.imports) {

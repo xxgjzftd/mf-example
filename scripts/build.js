@@ -124,22 +124,13 @@ const getVendorsExports = (isPre = false) => {
           Object.keys(imports).forEach(
             (imported) => {
               if (!isLocalModule(imported)) {
-                let vendor = imported
-                const segs = imported.split('/')
-                if (imported[0] === '@') {
-                  if (segs.length > 2) {
-                    vendor = segs[0] + '/' + segs[1]
-                  }
-                } else {
-                  if (segs.length > 1) {
-                    vendor = segs[0]
-                  }
-                }
-                let prefix = imported.length > vendor.length ? imported + '/' : ''
+                const index = imported.indexOf('/', imported[0] === '@' ? imported.indexOf('/') + 1 : 0)
+                let vendor = ~index ? imported.slice(0, index) : imported
+                let prefix = ~index ? imported + '/' : ''
                 const bindings = (vendorsExports[vendor] = vendorsExports[vendor] || new Set())
                 imports[imported].length
                   ? imports[imported].forEach((binding) => bindings.add(prefix + binding))
-                  : bindings.add(prefix)
+                  : bindings.add(imported + '/')
               }
             }
           )
@@ -342,7 +333,7 @@ const builder = {
                   let prefix = imported.length > mn.length ? imported + '/' : ''
                   imports[imported]
                     ? imports[imported].forEach((binding) => curBindings.add(prefix + binding))
-                    : curBindings.add(prefix)
+                    : curBindings.add(imported + '/')
                 }
               }
             )

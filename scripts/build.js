@@ -8,6 +8,8 @@ import vue from '@vitejs/plugin-vue'
 import execa from 'execa'
 import axios from 'axios'
 import fg from 'fast-glob'
+import MagicString from 'magic-string'
+import { init, parse } from 'es-module-lexer'
 
 import { routes } from './plugins.js'
 import config from '../mfe.config.js'
@@ -121,9 +123,23 @@ const getVendorsExports = (isPre = false) => {
         if (imports) {
           Object.keys(imports).forEach(
             (imported) => {
-              if (imports[imported].length && !isLocalModule(imported)) {
-                const bindings = (vendorsExports[imported] = vendorsExports[imported] || new Set())
-                imports[imported].forEach((binding) => bindings.add(binding))
+              if (!isLocalModule(imported)) {
+                let vendor = imported
+                const segs = imported.split('/')
+                if (imported[0] === '@') {
+                  if (segs.length > 2) {
+                    vendor = segs[0] + '/' + segs[1]
+                  }
+                } else {
+                  if (segs.length > 1) {
+                    vendor = segs[0]
+                  }
+                }
+                let prefix = imported.length > vendor.length ? imported + '/' : ''
+                const bindings = (vendorsExports[vendor] = vendorsExports[vendor] || new Set())
+                imports[imported].length
+                  ? imports[imported].forEach((binding) => bindings.add(prefix + binding))
+                  : bindings.add(prefix)
               }
             }
           )
@@ -188,6 +204,62 @@ const plugins = {
   meta (mn) {
     return {
       name: 'vue-mfe-meta',
+      async renderChunk (code, chunk) {
+        const { importedBindings } = chunk
+        const pending = []
+        Object.keys(importedBindings).forEach(
+          (imported) => {
+            if (!isLocalModule(imported)) {
+              let vendor = imported
+              const segs = imported.split('/')
+              if (imported[0] === '@') {
+                if (segs.length > 2) {
+                  vendor = segs[0] + '/' + segs[1]
+                }
+              } else {
+                if (segs.length > 1) {
+                  vendor = segs[0]
+                }
+              }
+              if (imported.length > vendor.length) {
+                pending.push([imported, vendor])
+              }
+            }
+          }
+        )
+        if (pending.length) {
+          await init
+          const [imports] = parse(code)
+          const ms = new MagicString(code)
+          pending.forEach(
+            ([imported, vendor]) => {
+              imports.forEach(
+                ({ n: mn, ss, se }) => {
+                  if (mn === imported) {
+                    const bindingToName = {}
+                    code
+                      .slice(ss, se)
+                      .match(/(?<=^import).+?(?=from)/)[0]
+                      .trim()
+                      .replace(/(^{|}$)/g, '')
+                      .split(',')
+                      .map((s) => s.trim().split('as'))
+                      .forEach(([binding, name]) => (bindingToName[binding] = name || binding))
+                    const content = importedBindings[imported].length
+                      ? `import { ${importedBindings[imported]
+                          .map(
+                            (binding) => `${imported.replaceAll('/', '$xx')}$xx${binding} as ${bindingToName[binding]}`
+                          )
+                          .join(',')} } from "${vendor}"`
+                      : `import "${vendor}"`
+                    ms.overwrite(ss, se, content)
+                  }
+                }
+              )
+            }
+          )
+        }
+      },
       generateBundle (options, bundle) {
         const info = getModuleInfo(mn)
         const fileNames = Object.keys(bundle)
@@ -239,9 +311,19 @@ const builder = {
         await Promise.all(info.dependents.map((dep) => builder.vendors(dep)))
         curBindings = new Set(curBindings)
         info.dependents.forEach(
-          (dep) =>
-            meta.modules[dep].imports[mn] &&
-            meta.modules[dep].imports[mn].forEach((binding) => curBindings.add(binding))
+          (dep) => {
+            const imports = meta.modules[dep].imports
+            Object.keys(imports).forEach(
+              (imported) => {
+                if (imported.startsWith(mn)) {
+                  let prefix = imported.length > mn.length ? imported + '/' : ''
+                  imports[imported]
+                    ? imports[imported].forEach((binding) => curBindings.add(prefix + binding))
+                    : curBindings.add(prefix)
+                }
+              }
+            )
+          }
         )
         curBindings = curVendorsExports[mn] = Array.from(curBindings).sort()
       }
@@ -268,7 +350,7 @@ const builder = {
                   manualChunks: null
                 },
                 preserveEntrySignatures: 'allow-extension',
-                external: info.dependencies
+                external: info.dependencies.map((dep) => new RegExp('^' + dep + '(/.+)?$'))
               }
             },
             plugins: [
@@ -283,28 +365,40 @@ const builder = {
                 load (id) {
                   if (id === VENDOR) {
                     const resolver = getResolver(mn)
+                    let bindings = []
+                    let subs = []
+                    let code = ''
+                    curBindings.forEach(
+                      (binding) => (binding.includes('/') ? subs.push(binding) : bindings.push(binding))
+                    )
                     if (resolver) {
                       const getSideEffectsCode = (sideEffects) =>
                         sideEffects ? `import "${mn}/${sideEffects}";\n` : ''
                       if (curHasStar) {
-                        const { path, sideEffects } = resolver('*')
-                        return getSideEffectsCode(sideEffects) + `export * from "${mn}/${path}";`
+                        const { sideEffects } = resolver('*')
+                        code = getSideEffectsCode(sideEffects) + `export * from "${mn}";`
                       }
-                      return curBindings
+                      code =
+                        bindings.map((binding) => getSideEffectsCode(resolver(binding).sideEffects)).join('\n') +
+                        `export { ${bindings.toString()} } from "${mn}";`
+                    } else {
+                      code = curHasStar ? `export * from "${mn}";` : `export { ${bindings.toString()} } from "${mn}";`
+                    }
+                    return (
+                      code +
+                      subs
                         .map(
-                          (binding) => {
-                            const { path, sideEffects } = resolver(binding)
-                            return (
-                              getSideEffectsCode(sideEffects) + `export { default as ${binding} } from "${mn}/${path}";`
-                            )
+                          (sub) => {
+                            const index = sub.lastIndexOf('/')
+                            const path = sub.slice(0, index)
+                            const binding = sub.slice(index + 1)
+                            return binding
+                              ? `export { ${binding} as ${sub.replaceAll('/', '$xx')} } from "${path}";`
+                              : `import "${path}";`
                           }
                         )
                         .join('\n')
-                    } else {
-                      return curHasStar
-                        ? `export * from "${mn}";`
-                        : `export { ${curBindings.toString()} } from "${mn}";`
-                    }
+                    )
                   }
                 }
               },
@@ -421,19 +515,21 @@ await Promise.all(
         let importmap = { imports: {} }
         const imports = importmap.imports
         Object.keys(meta.modules).forEach((mn) => (imports[mn] = base + meta.modules[mn].js))
-        importmap = `<script type="importmap">${JSON.stringify(importmap)}</script>`
+        importmap = `<script type="importmap-shim">${JSON.stringify(importmap)}</script>`
         let modules =
           `<script>window.mfe = window.mfe || {};` +
           `window.mfe.base = '${base}';` +
           `window.mfe.modules = ${JSON.stringify(meta.modules)}</script>`
         return writeFile(
           resolve(`${DIST}/index.html`),
-          html.replace(
-            built.has(containerName)
-              ? '<!-- mfe placeholder -->'
-              : /\<script type="importmap"\>.+?\<script\>window\.mfe.+?<\/script\>/,
-            importmap + modules
-          )
+          html
+            .replace(
+              built.has(containerName)
+                ? '<!-- mfe placeholder -->'
+                : /\<script type="importmap-shim"\>.+?\<script\>window\.mfe.+?<\/script\>/,
+              importmap + modules
+            )
+            .replace(/\<script(.*)type="module"/g, '<script$1type="module-shim"')
         )
       }
     )

@@ -94,7 +94,10 @@ const getDevAlias = () => {
   return alias
 }
 const getExternalFromPkgId = cached(
-  (pkgId) => [...Object.keys(getPkgInfoFromPkgId(pkgId).dependencies), localModuleNameRegExp]
+  (pkgId) => [
+    ...Object.keys(getPkgInfoFromPkgId(pkgId).dependencies).map((dep) => new RegExp('^' + dep + '(/.+)?$')),
+    localModuleNameRegExp
+  ]
 )
 const getExternal = cached((path) => getExternalFromPkgId(getPkgId(path)))
 const stringify = (payload, replacer) => {

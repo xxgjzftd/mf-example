@@ -385,18 +385,20 @@ const builder = {
                     curBindings.forEach(
                       (binding) => (binding.includes('/') ? subs.push(binding) : bindings.push(binding))
                     )
-                    if (resolver) {
-                      const getSideEffectsCode = (sideEffects) =>
-                        sideEffects ? `import "${mn}/${sideEffects}";\n` : ''
-                      if (curHasStar) {
-                        const { sideEffects } = resolver('*')
-                        code = getSideEffectsCode(sideEffects) + `export * from "${mn}";`
+                    if (bindings.length) {
+                      if (resolver) {
+                        const getSideEffectsCode = (sideEffects) =>
+                          sideEffects ? `import "${mn}/${sideEffects}";\n` : ''
+                        if (curHasStar) {
+                          code = getSideEffectsCode(resolver('*').sideEffects) + `export * from "${mn}";`
+                        } else {
+                          code =
+                            bindings.map((binding) => getSideEffectsCode(resolver(binding).sideEffects)).join('\n') +
+                            `export { ${bindings.toString()} } from "${mn}";`
+                        }
+                      } else {
+                        code = curHasStar ? `export * from "${mn}";` : `export { ${bindings.toString()} } from "${mn}";`
                       }
-                      code =
-                        bindings.map((binding) => getSideEffectsCode(resolver(binding).sideEffects)).join('\n') +
-                        `export { ${bindings.toString()} } from "${mn}";`
-                    } else {
-                      code = curHasStar ? `export * from "${mn}";` : `export { ${bindings.toString()} } from "${mn}";`
                     }
                     return (
                       code +

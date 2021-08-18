@@ -233,6 +233,7 @@ const plugins = {
                       const bindingToName = {}
                       const d = code
                         .slice(ss, se)
+                        .replaceAll('\n', '')
                         .match(/(?<=^import).+?(?=from)/)[0]
                         .trim()
                       const m = d.match(/^{(.+)}$/)
@@ -243,10 +244,12 @@ const plugins = {
                             (s) =>
                               s
                                 .trim()
-                                .split('as')
+                                .split(' as ')
                                 .map((v) => v.trim())
                           )
                           .forEach(([binding, name]) => (bindingToName[binding] = name || binding))
+                      } else if (d[0] === '*') {
+                        bindingToName['*'] = d.split(' as ')[1].trim()
                       } else {
                         bindingToName.default = d
                       }
@@ -409,7 +412,9 @@ const builder = {
                             const path = sub.slice(0, index)
                             const binding = sub.slice(index + 1)
                             return binding
-                              ? `export { ${binding} as ` + `${sub.replace(/\W/g, SEP)} } from "${path}";`
+                              ? binding === '*'
+                                ? `export * as ${sub.replace(/\W/g, SEP)} from "${path}";`
+                                : `export { ${binding} as ` + `${sub.replace(/\W/g, SEP)} } from "${path}";`
                               : `import "${path}";`
                           }
                         )

@@ -233,7 +233,7 @@ const plugins = {
                       const bindingToName = {}
                       const d = code
                         .slice(ss, se)
-                        .replaceAll('\n', '')
+                        .replace(/\n/g, '')
                         .match(/(?<=^import).+?(?=from)/)[0]
                         .trim()
                       const m = d.match(/^{(.+)}$/)

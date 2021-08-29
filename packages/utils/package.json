@@ -1,15 +1,12 @@
 {
-  "name": "@vue-mfe/utils",
+  "name": "@xx/utils",
   "version": "1.0.0",
   "private": true,
   "author": "xxgjzftd <xxgjzftd@gmail.com>",
   "license": "MIT",
   "main": "src/index.ts",
-  "mfe": {
-    "type": "utils"
-  },
   "dependencies": {
     "axios": "^0.21.1",
-    "vue": "3.2.0-beta.6"
+    "vue": "^3.2.0"
   }
 }

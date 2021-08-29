@@ -19,7 +19,7 @@
     "sourceMap": true,
     "strict": true,
     "target": "esnext",
-    "types": ["vite/client", "@vue-mfe/container/global"]
+    "types": ["vite/client", "@xx/container/global"]
   },
   "include": [
     "packages/*/src/**/*.d.ts",

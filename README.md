@@ -21,7 +21,7 @@
   ```
   container > pages > components > utils > vendors
   // 像 @container @supplier 这样的alias只能在当前包内用。
-  // 引入别的包时，用 @vue-mfe/utils 这样的全名。
+  // 引入别的包时，用 @xx/utils 这样的全名。
   // 引入当前包时，用 @container 这样的别名。
   // 如果不是完全理解构建过程，最好按上面的规范来，要不然容易出错。
   ```

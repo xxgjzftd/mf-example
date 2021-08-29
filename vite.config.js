@@ -1,18 +1,11 @@
+import vue from '@vitejs/plugin-vue'
+
 export default ({ command, mode }) => {
   /**
    * @type {import('vite').UserConfig}
    */
   const config = {
-    css: {
-      preprocessorOptions: {
-        less: {
-          modifyVars: {
-            '@primary-color': '#0d8d8d'
-          },
-          javascriptEnabled: true
-        }
-      }
-    }
+    plugins: [vue()]
   }
   if (command === 'serve') {
     config.server = {

@@ -1,14 +1,11 @@
 {
-  "name": "@vue-mfe/components",
+  "name": "@xx/components",
   "version": "1.0.0",
   "private": true,
   "author": "xxgjzftd <xxgjzftd@gmail.com>",
   "license": "MIT",
   "main": "src/index.ts",
-  "mfe": {
-    "type": "components"
-  },
   "dependencies": {
-    "vue": "3.2.0-beta.6"
+    "vue": "^3.2.0"
   }
 }

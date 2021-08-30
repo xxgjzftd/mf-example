@@ -1,0 +1,12 @@
+{
+  "name": "@xx/v3-utils",
+  "version": "1.0.0",
+  "private": true,
+  "author": "xxgjzftd <xxgjzftd@gmail.com>",
+  "license": "MIT",
+  "main": "src/index.ts",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "vue": "^3.2.0"
+  }
+}

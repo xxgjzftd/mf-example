@@ -1,11 +1,9 @@
-import vue from '@vitejs/plugin-vue'
-
 export default ({ command, mode }) => {
   /**
    * @type {import('vite').UserConfig}
    */
   const config = {
-    plugins: [vue()]
+    plugins: []
   }
   if (command === 'serve') {
     config.server = {

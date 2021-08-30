@@ -1,0 +1,12 @@
+{
+  "name": "@xx/v2-components",
+  "version": "1.0.0",
+  "private": true,
+  "author": "xxgjzftd <xxgjzftd@gmail.com>",
+  "license": "MIT",
+  "main": "src/index.js",
+  "dependencies": {
+    "element-ui": "^2.15.5",
+    "vue": "^2.6.14"
+  }
+}

@@ -3,7 +3,8 @@ import { createVuePlugin } from 'vite-plugin-vue2'
 
 export default {
   scope: '@xx',
-  glob: [['packages/*/**/*.{ts,vue}']],
+  glob: [['packages/*/*/**']],
+  extensions: ['vue', 'ts'],
   apps: [
     {
       name: 'v2-container',

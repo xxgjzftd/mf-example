@@ -1,9 +1,11 @@
+import { resolve } from 'path'
+import { createRequire } from 'module'
+
 import vue from '@vitejs/plugin-vue'
-import { createVuePlugin } from 'vite-plugin-vue2'
 
 export default {
   scope: '@xx',
-  extensions: ['vue', 'ts'],
+  extensions: ['vue', 'ts', 'js'],
   apps: [
     {
       name: 'v2-container',
@@ -48,7 +50,9 @@ export default {
     if (pn.startsWith('@xx/v3')) {
       config.plugins.push(vue())
     } else if (pn.startsWith('@xx/v2')) {
-      config.plugins.push(createVuePlugin())
+      const require = createRequire(resolve(utils.getPkgPathFromLmn(lmn), 'package.json'))
+      config.plugins.push(require('vite-plugin-vue2').createVuePlugin())
     }
+    return config
   }
 }

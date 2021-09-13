@@ -3,3 +3,9 @@
   <el-button>xx</el-button>
   <router-view></router-view>
 </template>
+
+<script>
+export default {
+  name: 'layout'
+}
+</script>

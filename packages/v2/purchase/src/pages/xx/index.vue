@@ -15,7 +15,7 @@ export default {
   },
   methods: {
     goToDetail () {
-      this.$router.push('/v2/purchase/xx/detail')
+      this.$router.push('/v2/v2-purchase/xx/detail')
     }
   }
 }

@@ -14,6 +14,7 @@ const router = new VueRouter(
   }
 )
 
+Vue.use(VueRouter)
 Vue.use(Button)
 
 const vm = new Vue(

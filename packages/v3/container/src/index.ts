@@ -18,7 +18,13 @@ const router = createRouter(
 
 app.use(router)
 
-app.mount('#app')
 app.config.globalProperties.moment = moment
 
-export default app
+export default {
+  mount () {
+    app.mount('#app')
+  },
+  unmount () {
+    app.unmount()
+  }
+}

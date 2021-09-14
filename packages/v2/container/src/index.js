@@ -9,16 +9,25 @@ import app from './app.vue'
 
 const router = new VueRouter(
   {
+    mode: 'history',
     routes
   }
 )
 
 Vue.use(Button)
 
-new Vue(
+const vm = new Vue(
   {
-    el: '#app',
     router,
     render: (h) => h(app)
   }
 )
+
+export default {
+  mount () {
+    vm.$mount('#app')
+  },
+  ummount () {
+    vm.$destroy()
+  }
+}

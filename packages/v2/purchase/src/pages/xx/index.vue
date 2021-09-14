@@ -1,7 +1,7 @@
 <template>
   <div>
     <h1>v2 purchase xx</h1>
-    <el-button>go to detail</el-button>
+    <el-button @click="goToDetail">go to detail</el-button>
     <goods-list></goods-list>
   </div>
 </template>

@@ -96,7 +96,7 @@
     }));
     await Promise.all(toBeMounted.map(async (app) => {
       if (app.status === 0) {
-        Object.assign(app, await app.load());
+        Object.assign(app, await app.load().then((m) => m.default));
         app.status = 1;
       }
       await app.mount();

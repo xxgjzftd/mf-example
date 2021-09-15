@@ -17,7 +17,7 @@ let count = ref('x')
 
 const router = useRouter()
 const goToDetail = () => {
-  router.push('/v3/supplier/xx/detail')
+  router.push('/v3/v3-supplier/xx/detail')
 }
 </script>
 

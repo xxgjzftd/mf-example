@@ -5,6 +5,7 @@
     "@vue/compiler-sfc": "^3.2.6",
     "prettier": "npm:@xxgjzftd/prettier",
     "typescript": "^4.3.5",
+    "unplugin-vue-components": "^0.15.1",
     "vite": "^2.4.4",
     "vue-tsc": "^0.3.0"
   },

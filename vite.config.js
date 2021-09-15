@@ -1,9 +1,18 @@
+import Components from 'unplugin-vue-components/vite'
+import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers'
+
 export default ({ command, mode }) => {
   /**
    * @type {import('vite').UserConfig}
    */
   const config = {
-    plugins: []
+    plugins: [
+      Components(
+        {
+          resolvers: [AntDesignVueResolver()]
+        }
+      )
+    ]
   }
   if (command === 'serve') {
     config.server = {

@@ -1,3 +1,3 @@
-import { build } from '@mf/node'
+import { serve } from '@mf/node'
 
-build()
+serve()

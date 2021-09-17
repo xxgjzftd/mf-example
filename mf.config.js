@@ -9,11 +9,28 @@ export default {
   apps: [
     {
       name: 'v2-container',
-      predicate: () => location.pathname.startsWith('/v2')
+      predicate: (pathname) => pathname.startsWith('/v2'),
+      vite ({ command, mode }, utils) {
+        const require = createRequire(resolve(utils.getPkgJsonPath('@xx/v2-container')))
+        return {
+          plugins: [require('vite-plugin-vue2').createVuePlugin()]
+        }
+      },
+      packages (packages, utils) {
+        return packages.filter((pn) => utils.getPkgJsonPath(pn).startsWith('packages/v2'))
+      }
     },
     {
       name: 'v3-container',
-      predicate: () => location.pathname.startsWith('/v3')
+      predicate: (pathname) => pathname.startsWith('/v3'),
+      vite () {
+        return {
+          plugins: [vue()]
+        }
+      },
+      packages (packages, utils) {
+        return packages.filter((pn) => utils.getPkgJsonPath(pn).startsWith('packages/v3'))
+      }
     }
   ],
   routes: {
@@ -41,18 +58,5 @@ export default {
         }
       ]
     }
-  },
-  vite (lmn, utils) {
-    const pn = utils.getPkgName(lmn)
-    const config = {
-      plugins: []
-    }
-    if (pn.startsWith('@xx/v3')) {
-      config.plugins.push(vue())
-    } else if (pn.startsWith('@xx/v2')) {
-      const require = createRequire(resolve(utils.getPkgPathFromLmn(lmn), 'package.json'))
-      config.plugins.push(require('vite-plugin-vue2').createVuePlugin())
-    }
-    return config
   }
 }

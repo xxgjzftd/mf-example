@@ -1,8 +1,10 @@
 <template>
-  <h1>business components</h1>
-  <ul>
-    <li v-for="goods of list">{{ goods.name }}</li>
-  </ul>
+  <div>
+    <h1>business components</h1>
+    <ul>
+      <li v-for="goods of list">{{ goods.name }}</li>
+    </ul>
+  </div>
 </template>
 
 <script>

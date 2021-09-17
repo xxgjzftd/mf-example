@@ -76,7 +76,7 @@
     const toBeMounted = [];
     const toBeUnmounted = [];
     apps.forEach((app) => {
-      const shouldBeActive = app.predicate();
+      const shouldBeActive = app.predicate(location.pathname);
       switch (app.status) {
         case 0:
         case 1:

@@ -623,10 +623,10 @@
   resolved "https://registry.yarnpkg.com/@vue/shared/-/shared-3.2.11.tgz#01899f54949caf1ac241de397bd17069632574de"
   integrity sha512-ovfXAsSsCvV9JVceWjkqC/7OF5HbgLOtCWjCIosmPGG8lxbPuavhIxRH1dTx4Dg9xLgRTNLvI3pVxG4ItQZekg==
 
-"@xxgjzftd/builder@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@xxgjzftd/builder/-/builder-0.1.0.tgz#d399b7e6fdd82b21c4eb51bb3f03b498ba6a4fee"
-  integrity sha512-j7TcKmGreLB6Kj5W6HHqsy+bQ2dOen7gddXaQGDhkJfO9rB2+oiN/ZPOeo1pqqd/Wx7FPs5aSBxDV+06yGE1tg==
+"@xxgjzftd/builder@^0.1.9":
+  version "0.1.9"
+  resolved "https://registry.yarnpkg.com/@xxgjzftd/builder/-/builder-0.1.9.tgz#279131e62bdb753eef1f51c5a8b5277e560851d2"
+  integrity sha512-gcvfW7u/jk0RJqy3mpCV0mNPwxr+79P0qaabLFmxp9xOJTN4cdiD+XlnSJ+uN4v40LuioKoMij2UtbXBwApFnQ==
   dependencies:
     axios "^0.21.1"
     cac "^6.7.3"

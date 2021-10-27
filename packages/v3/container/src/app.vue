@@ -7,6 +7,7 @@
 </template>
 
 <script lang="ts" setup>
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { PhoneFilled, MessageOutlined } from '@ant-design/icons-vue'
 
@@ -14,6 +15,12 @@ const router = useRouter()
 const goToSupplier = () => {
   router.push('/supplier/xx')
 }
+
+onMounted(
+  () => {
+    console.log('xx')
+  }
+)
 </script>
 
 <style>

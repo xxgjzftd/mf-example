@@ -1,12 +1,10 @@
 {
-  "name": "@xx/v3-supplier",
+  "name": "@xx/v3-layout",
   "version": "1.0.0",
   "private": true,
   "author": "xxgjzftd <xxgjzftd@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "@xx/v3-components": "workspace:^1.0.0",
-    "ant-design-vue": "^2.2.2",
     "vue": "^3.2.0",
     "vue-router": "4"
   },

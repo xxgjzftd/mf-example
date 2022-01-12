@@ -3,7 +3,7 @@ import VueRouter from 'vue-router'
 import { Button } from 'element-ui'
 import 'element-ui/lib/theme-chalk/button.css'
 
-import routes from '@mf/routes/v2'
+import routes from 'routes/v2'
 
 import app from './app.vue'
 

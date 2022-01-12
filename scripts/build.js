@@ -45,7 +45,7 @@ task.hook(
           depth: 1,
           extends: [
             {
-              id: 'packages/v2/container/src/pages/layout.vue',
+              id: 'packages/v2/layout/src/pages/layout.vue',
               path: '/v2',
               depth: 0
             }
@@ -57,7 +57,7 @@ task.hook(
           depth: 1,
           extends: [
             {
-              id: 'packages/v3/container/src/pages/layout.vue',
+              id: 'packages/v3/layout/src/pages/layout.vue',
               path: '/v3',
               depth: 0
             }

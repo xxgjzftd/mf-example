@@ -1,5 +1,5 @@
 {
-  "name": "@xx/v2-purchase",
+  "name": "@xx/v2-layout",
   "version": "1.0.0",
   "private": true,
   "author": "xxgjzftd <xxgjzftd@gmail.com>",
@@ -9,7 +9,7 @@
     "vue-template-compiler": "^2.6.14"
   },
   "dependencies": {
-    "@xx/v2-components": "workspace:^1.0.0",
-    "vue": "^2.6.14"
+    "vue": "^2.6.14",
+    "vue-router": "^3.5.2"
   }
 }

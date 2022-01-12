@@ -3,7 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import moment from 'moment'
 import 'moment/dist/locale/zh-cn'
 
-import routes from '@mf/routes/v3'
+import routes from 'routes/v3'
 
 import App from '@v3-container/app.vue'
 

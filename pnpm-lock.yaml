@@ -42,12 +42,27 @@ importers:
       vite-plugin-vue2: 1.9.2_0942e2da5dc468c8f4e6d1df85edc06f
       vue-template-compiler: 2.6.14
 
+  packages/v2/layout:
+    specifiers:
+      vite-plugin-vue2: ^1.8.1
+      vue: ^2.6.14
+      vue-router: ^3.5.2
+      vue-template-compiler: ^2.6.14
+    dependencies:
+      vue: 2.6.14
+      vue-router: 3.5.3
+    devDependencies:
+      vite-plugin-vue2: 1.9.2_0942e2da5dc468c8f4e6d1df85edc06f
+      vue-template-compiler: 2.6.14
+
   packages/v2/purchase:
     specifiers:
+      '@xx/v2-components': workspace:^1.0.0
       vite-plugin-vue2: ^1.8.1
       vue: ^2.6.14
       vue-template-compiler: ^2.6.14
     dependencies:
+      '@xx/v2-components': link:../components
       vue: 2.6.14
     devDependencies:
       vite-plugin-vue2: 1.9.2_0942e2da5dc468c8f4e6d1df85edc06f
@@ -85,15 +100,32 @@ importers:
       '@vue/compiler-sfc': 3.2.26
       unplugin-vue-components: 0.15.6_vite@2.7.10+vue@3.2.26
 
+  packages/v3/layout:
+    specifiers:
+      '@vitejs/plugin-vue': ^2.0.1
+      '@vue/compiler-sfc': ^3.2.26
+      unplugin-vue-components: ^0.15.1
+      vue: ^3.2.0
+      vue-router: '4'
+    dependencies:
+      vue: 3.2.26
+      vue-router: 4.0.12_vue@3.2.26
+    devDependencies:
+      '@vitejs/plugin-vue': 2.0.1_vite@2.7.10+vue@3.2.26
+      '@vue/compiler-sfc': 3.2.26
+      unplugin-vue-components: 0.15.6_vite@2.7.10+vue@3.2.26
+
   packages/v3/supplier:
     specifiers:
       '@vitejs/plugin-vue': ^2.0.1
       '@vue/compiler-sfc': ^3.2.26
+      '@xx/v3-components': workspace:^1.0.0
       ant-design-vue: ^2.2.2
       unplugin-vue-components: ^0.15.1
       vue: ^3.2.0
       vue-router: '4'
     dependencies:
+      '@xx/v3-components': link:../components
       ant-design-vue: 2.2.8_ae87cbba5ec93a01f3fe1197df446ca3
       vue: 3.2.26
       vue-router: 4.0.12_vue@3.2.26

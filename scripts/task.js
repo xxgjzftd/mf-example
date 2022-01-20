@@ -5,7 +5,17 @@ import { createRequire } from 'module'
 import { Processor } from '@ugdu/processor'
 import { serve, build } from '@ugdu/packer'
 
-const task = new Processor().task(build)
+let task
+
+switch (argv[2]) {
+  case 'serve':
+    task = new Processor().task(serve)
+    break
+  case 'local':
+  default:
+    task = new Processor().task(build)
+    break
+}
 
 task.hook(
   'get-config',
@@ -68,13 +78,6 @@ task.hook(
       meta: 'local',
       vite: {}
     }
-  }
-)
-
-task.hook(
-  'build-local-module',
-  (lmn, context) => {
-    console.log(lmn)
   }
 )
 

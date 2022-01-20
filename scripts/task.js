@@ -1,10 +1,11 @@
+import { argv } from 'process'
 import { resolve } from 'path'
 import { createRequire } from 'module'
 
 import { Processor } from '@ugdu/processor'
-import { build } from '@ugdu/packer'
+import { serve, build } from '@ugdu/packer'
 
-const task = new Processor().task(build)
+const task = new Processor().task(serve)
 
 task.hook(
   'get-config',

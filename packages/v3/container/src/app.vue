@@ -13,7 +13,7 @@ import { PhoneFilled, MessageOutlined } from '@ant-design/icons-vue'
 
 const router = useRouter()
 const goToSupplier = () => {
-  router.push('/supplier/xx')
+  router.push('/v3/v3-supplier/xx')
 }
 
 onMounted(

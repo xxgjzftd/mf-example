@@ -4,10 +4,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "serve": "node scripts/serve.js",
-    "local": "node scripts/build.js",
-    "qa": "node scripts/build.js qa",
-    "prod": "node scripts/build.js prod",
+    "serve": "node scripts/task.js serve",
+    "local": "node scripts/task.js local",
+    "qa": "node scripts/task.js qa",
+    "prod": "node scripts/task.js prod",
     "preview": "vite preview"
   },
   "author": "xxgjzftd <xxgjzftd@gmail.com>",

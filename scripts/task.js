@@ -71,4 +71,11 @@ task.hook(
   }
 )
 
+task.hook(
+  'build-local-module',
+  (lmn, context) => {
+    console.log(lmn)
+  }
+)
+
 task.run()

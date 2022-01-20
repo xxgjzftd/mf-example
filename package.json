@@ -12,6 +12,8 @@
   },
   "author": "xxgjzftd <xxgjzftd@gmail.com>",
   "devDependencies": {
+    "@ugdu/packer": "^0.1.0",
+    "@ugdu/processor": "^0.1.0",
     "prettier": "npm:@xxgjzftd/prettier",
     "typescript": "^4.3.5",
     "vite": "^2.4.4",

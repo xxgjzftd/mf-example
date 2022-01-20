@@ -5,7 +5,7 @@ import { createRequire } from 'module'
 import { Processor } from '@ugdu/processor'
 import { serve, build } from '@ugdu/packer'
 
-const task = new Processor().task(serve)
+const task = new Processor().task(build)
 
 task.hook(
   'get-config',
